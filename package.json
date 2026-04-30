@@ -1,7 +1,7 @@
 {
-  "name": "baileys-scheduler",
+  "name": "team-scheduler-bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "WhatsApp bot for automating team scheduling reminders and attendance polls",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
