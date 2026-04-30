@@ -94,6 +94,36 @@ router.delete('/api/schedule/:id', (req, res) => {
     res.json({ success: true })
 })
 
+// --- API: Calendar (monthly view) ---
+router.get('/api/calendar/:year/:month', (req, res) => {
+    const db = getDb()
+    const year = parseInt(req.params.year)
+    const month = parseInt(req.params.month) // 1-12
+    if (!year || !month || month < 1 || month > 12) {
+        return res.status(400).json({ error: 'Invalid year/month' })
+    }
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+    const entries = db.prepare(`
+        SELECT se.id, se.service_date, se.day_type, se.role, tm.name, tm.id as member_id
+        FROM schedule_entries se
+        JOIN team_members tm ON se.member_id = tm.id
+        WHERE se.service_date >= ? AND se.service_date <= ?
+        ORDER BY se.service_date ASC, CASE se.role WHEN 'primary' THEN 0 ELSE 1 END, tm.name
+    `).all(startDate, endDate)
+
+    // Group by date
+    const byDate = {}
+    entries.forEach(e => {
+        if (!byDate[e.service_date]) byDate[e.service_date] = []
+        byDate[e.service_date].push(e)
+    })
+
+    res.json({ year, month, lastDay, entries: byDate })
+})
+
 // --- API: Manual Send / Preview ---
 router.post('/api/preview', (req, res) => {
     const { type, date } = req.body
