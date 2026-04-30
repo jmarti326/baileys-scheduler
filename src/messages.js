@@ -11,7 +11,7 @@ function getAssignedMembers(serviceDate, dayType) {
         FROM schedule_entries se
         JOIN team_members tm ON se.member_id = tm.id
         WHERE se.service_date = ? AND se.day_type = ?
-        ORDER BY se.role ASC, tm.name
+        ORDER BY CASE se.role WHEN 'primary' THEN 0 ELSE 1 END, tm.name
     `).all(serviceDate, dayType)
     return rows
 }
@@ -76,8 +76,9 @@ function buildMondaySummary(today) {
     text += `🗓️ *Jueves ${formatDate(thursday)}:*\n`
     if (thurTeam.length > 0) {
         thurTeam.forEach(m => {
-            const label = m.role === 'backup' ? ' 🔄(Backup)' : ''
-            text += `  • @${m.phone}${label}\n`
+            const prefix = m.role === 'backup' ? '  • ' : '  ⭐ '
+            const suffix = m.role === 'backup' ? ' _(Backup)_' : ''
+            text += `${prefix}@${m.phone}${suffix}\n`
             mentions.push(`${m.phone}@s.whatsapp.net`)
         })
     } else {
@@ -87,8 +88,9 @@ function buildMondaySummary(today) {
     text += `\n🗓️ *Domingo ${formatDate(sunday)}:*\n`
     if (sunTeam.length > 0) {
         sunTeam.forEach(m => {
-            const label = m.role === 'backup' ? ' 🔄(Backup)' : ''
-            text += `  • @${m.phone}${label}\n`
+            const prefix = m.role === 'backup' ? '  • ' : '  ⭐ '
+            const suffix = m.role === 'backup' ? ' _(Backup)_' : ''
+            text += `${prefix}@${m.phone}${suffix}\n`
             mentions.push(`${m.phone}@s.whatsapp.net`)
         })
     } else {
@@ -113,8 +115,9 @@ function buildWednesdayReminder(today) {
 
     if (team.length > 0) {
         team.forEach(m => {
-            const label = m.role === 'backup' ? ' 🔄(Backup)' : ''
-            text += `  🎬 @${m.phone}${label}\n`
+            const prefix = m.role === 'backup' ? '  • ' : '  ⭐ '
+            const suffix = m.role === 'backup' ? ' _(Backup)_' : ''
+            text += `${prefix}@${m.phone}${suffix}\n`
             mentions.push(`${m.phone}@s.whatsapp.net`)
         })
     } else {
@@ -132,13 +135,14 @@ function buildWednesdayReminder(today) {
 function buildThursdayPoll(today) {
     const { thursday } = getWeekDates(today)
     const team = getAssignedMembers(thursday, 'thursday')
-    const mentions = team.map(m => `${m.phone}@s.whatsapp.net`)
-    const names = team.map(m => m.name).join(' y ')
+    const primaryTeam = team.filter(m => m.role === 'primary')
+    const mentions = primaryTeam.map(m => `${m.phone}@s.whatsapp.net`)
+    const names = primaryTeam.map(m => m.name).join(' y ')
 
     const pollName = `🎬 ${names} - ¿Pueden estar hoy jueves ${formatDate(thursday)}?`
     const values = ['✅ Sí, cuenten conmigo', '❌ No puedo hoy', '⏰ Llego tarde']
 
-    return { pollName, values, mentions, team }
+    return { pollName, values, mentions, team: primaryTeam }
 }
 
 /**
@@ -157,8 +161,9 @@ function buildSaturdayReminder(today) {
 
     if (team.length > 0) {
         team.forEach(m => {
-            const label = m.role === 'backup' ? ' 🔄(Backup)' : ''
-            text += `  🎬 @${m.phone}${label}\n`
+            const prefix = m.role === 'backup' ? '  • ' : '  ⭐ '
+            const suffix = m.role === 'backup' ? ' _(Backup)_' : ''
+            text += `${prefix}@${m.phone}${suffix}\n`
             mentions.push(`${m.phone}@s.whatsapp.net`)
         })
     } else {
@@ -180,7 +185,7 @@ function buildSaturdayPoll(today) {
     const sunday = formatISO(date)
     const team = getAssignedMembers(sunday, 'sunday')
     const mentions = team.map(m => `${m.phone}@s.whatsapp.net`)
-    const names = team.map(m => m.name).join(' y ')
+    const names = team.map(m => m.role === 'backup' ? `${m.name} (Backup)` : m.name).join(' y ')
 
     const pollName = `🎬 ${names} - ¿Pueden estar mañana domingo ${formatDate(sunday)}?`
     const values = ['✅ Sí, cuenten conmigo', '❌ No puedo', '⏰ Llego tarde']

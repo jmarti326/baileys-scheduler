@@ -30,10 +30,10 @@ function logMessage(key, type, content) {
 /**
  * Send a scheduled message with idempotency check
  */
-async function sendScheduledMessage(type, buildFn, forceSend = false, dateOverride = null) {
+async function sendScheduledMessage(type, buildFn, forceSend = false, dateOverride = null, groupJidOverride = null) {
     const today = dateOverride || getToday()
     const key = messageKey(type, today)
-    const groupJid = getGroupJid()
+    const groupJid = groupJidOverride || getGroupJid()
 
     if (!forceSend && alreadySent(key)) {
         console.log(`[SCHEDULER] ⏭️ Already sent: ${key}`)

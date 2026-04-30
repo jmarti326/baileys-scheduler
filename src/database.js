@@ -49,6 +49,11 @@ function initSchema() {
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS group_aliases (
+            jid TEXT PRIMARY KEY,
+            alias TEXT NOT NULL
+        );
     `)
 
     // Default settings

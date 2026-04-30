@@ -1,6 +1,6 @@
 const express = require('express')
 const { getDb } = require('./database')
-const { getStatus } = require('./bot')
+const { getStatus, getSocket } = require('./bot')
 const { sendScheduledMessage, getToday, getGroupJid } = require('./scheduler')
 const { buildMondaySummary, buildWednesdayReminder, buildThursdayPoll, buildSaturdayReminder, buildSaturdayPoll } = require('./messages')
 
@@ -10,9 +10,12 @@ const router = express.Router()
 router.get('/api/status', (req, res) => {
     const db = getDb()
     const recentLogs = db.prepare('SELECT * FROM message_logs ORDER BY sent_at DESC LIMIT 10').all()
+    const groupJid = getGroupJid()
+    const alias = db.prepare('SELECT alias FROM group_aliases WHERE jid = ?').get(groupJid)
     res.json({
         connection: getStatus(),
-        groupJid: getGroupJid(),
+        groupJid,
+        groupAlias: alias?.alias || null,
         today: getToday(),
         recentLogs
     })
@@ -64,7 +67,7 @@ router.get('/api/schedule', (req, res) => {
         SELECT se.id, se.service_date, se.day_type, se.role, tm.name, tm.phone, tm.id as member_id
         FROM schedule_entries se
         JOIN team_members tm ON se.member_id = tm.id
-        ORDER BY se.service_date ASC, se.day_type, se.role ASC
+        ORDER BY se.service_date ASC, se.day_type, CASE se.role WHEN 'primary' THEN 0 ELSE 1 END
     `).all()
     res.json(entries)
 })
@@ -126,7 +129,7 @@ router.post('/api/preview', (req, res) => {
 })
 
 router.post('/api/send', async (req, res) => {
-    const { type, force, date } = req.body
+    const { type, force, date, groupJid } = req.body
 
     const buildFns = {
         'monday-summary': buildMondaySummary,
@@ -140,7 +143,7 @@ router.post('/api/send', async (req, res) => {
         return res.status(400).json({ error: 'Invalid message type' })
     }
 
-    const result = await sendScheduledMessage(type, buildFns[type], force === true, date)
+    const result = await sendScheduledMessage(type, buildFns[type], force === true, date, groupJid)
     res.json(result)
 })
 
@@ -157,6 +160,38 @@ router.post('/api/settings', (req, res) => {
     const db = getDb()
     const { key, value } = req.body
     db.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)').run(key, value)
+    res.json({ success: true })
+})
+
+// --- API: Groups (fetch from WhatsApp) ---
+router.get('/api/groups', async (req, res) => {
+    const sock = getSocket()
+    if (!sock || getStatus() !== 'connected') {
+        return res.status(503).json({ error: 'Bot not connected' })
+    }
+    try {
+        const db = getDb()
+        const aliases = {}
+        db.prepare('SELECT jid, alias FROM group_aliases').all().forEach(r => aliases[r.jid] = r.alias)
+
+        const groups = await sock.groupFetchAllParticipating()
+        const list = Object.values(groups).map(g => ({
+            jid: g.id,
+            name: g.subject,
+            alias: aliases[g.id] || null,
+            participants: g.participants?.length || 0
+        })).sort((a, b) => (a.alias || a.name).localeCompare(b.alias || b.name))
+        res.json(list)
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+})
+
+router.post('/api/groups/alias', (req, res) => {
+    const db = getDb()
+    const { jid, alias } = req.body
+    if (!jid || !alias) return res.status(400).json({ error: 'jid and alias required' })
+    db.prepare('INSERT OR REPLACE INTO group_aliases (jid, alias) VALUES (?, ?)').run(jid, alias.trim())
     res.json({ success: true })
 })
 

@@ -38,9 +38,13 @@ async function connectBot() {
         if (connection === 'close') {
             connectionStatus = 'disconnected'
             const statusCode = lastDisconnect?.error?.output?.statusCode
+            const reason = lastDisconnect?.error?.message || 'unknown'
+            console.log(`[BOT] ⚠️ Connection closed (code: ${statusCode}, reason: ${reason})`)
             if (statusCode !== DisconnectReason.loggedOut) {
-                console.log('[BOT] 🔄 Reconnecting...')
-                setTimeout(connectBot, 5000)
+                // Avoid rapid reconnect loops
+                const delay = statusCode === 408 || statusCode === 503 ? 15000 : 5000
+                console.log(`[BOT] 🔄 Reconnecting in ${delay/1000}s...`)
+                setTimeout(connectBot, delay)
             } else {
                 console.log('[BOT] ❌ Logged out')
                 connectionStatus = 'logged_out'
@@ -49,6 +53,23 @@ async function connectBot() {
     })
 
     sock.ev.on('creds.update', saveCreds)
+
+    // Track groups we're part of
+    sock.ev.on('messages.upsert', ({ messages }) => {
+        for (const msg of messages) {
+            const jid = msg.key.remoteJid
+            if (jid?.endsWith('@g.us')) {
+                // Store group JID when we see messages from it
+                const groupsFile = path.join(__dirname, '..', 'data', 'groups.json')
+                let groups = {}
+                try { groups = JSON.parse(require('fs').readFileSync(groupsFile, 'utf8')) } catch {}
+                if (!groups[jid]) {
+                    groups[jid] = { name: null, jid }
+                    require('fs').writeFileSync(groupsFile, JSON.stringify(groups, null, 2))
+                }
+            }
+        }
+    })
 
     return sock
 }

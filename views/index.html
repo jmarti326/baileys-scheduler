@@ -26,6 +26,7 @@
             <button onclick="showTab('schedule')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="schedule">Schedule</button>
             <button onclick="showTab('send')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="send">Manual Send</button>
             <button onclick="showTab('logs')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="logs">Logs</button>
+            <button onclick="showTab('settings')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="settings">Settings</button>
         </div>
 
         <!-- Dashboard Tab -->
@@ -40,8 +41,9 @@
                     <p id="today-date" class="text-2xl font-bold mt-1">...</p>
                 </div>
                 <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 uppercase">Group JID</h3>
-                    <p id="group-jid" class="text-sm font-mono mt-1 break-all">...</p>
+                    <h3 class="text-sm text-gray-400 uppercase">Target Group</h3>
+                    <p id="group-alias" class="text-lg font-bold mt-1">...</p>
+                    <p id="group-jid" class="text-xs font-mono text-gray-500 mt-1 break-all">...</p>
                 </div>
             </div>
             <div class="bg-gray-800 rounded-lg p-4">
@@ -102,6 +104,13 @@
                         <input id="sim-date" type="date" class="bg-gray-600 rounded px-3 py-2 text-sm w-full">
                         <p class="text-xs text-gray-500 mt-1">Pick a Monday/Wednesday/Thursday/Saturday to test that day's message with real schedule data.</p>
                     </div>
+                    <div class="mb-4 p-3 bg-gray-700 rounded">
+                        <label class="text-sm text-gray-400 block mb-1">Send to group:</label>
+                        <select id="send-group-override" class="bg-gray-600 rounded px-3 py-2 text-sm w-full">
+                            <option value="">Default (configured target)</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Override the target group for this send only.</p>
+                    </div>
                     <div class="space-y-3">
                         <button onclick="previewMessage('monday-summary')" class="w-full bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded text-sm font-medium text-left">
                             📋 Monday - Weekly Summary
@@ -145,6 +154,30 @@
                 <div id="logs-list" class="space-y-2"></div>
             </div>
         </div>
+
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="tab-content hidden">
+            <div class="bg-gray-800 rounded-lg p-4 mb-4">
+                <h3 class="text-lg font-semibold mb-3">Target Group Chat</h3>
+                <p class="text-sm text-gray-400 mb-3">Select the WhatsApp group where messages will be sent:</p>
+                <div class="flex gap-3 items-center mb-4">
+                    <select id="group-select" class="flex-1 bg-gray-700 rounded px-3 py-2 text-sm">
+                        <option value="">Loading groups...</option>
+                    </select>
+                    <button onclick="loadGroups()" class="bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded text-sm">🔄 Refresh</button>
+                    <button onclick="saveGroup()" class="bg-primary hover:bg-indigo-500 px-4 py-2 rounded text-sm font-medium">💾 Save</button>
+                </div>
+                <div id="current-group" class="bg-gray-700 rounded p-3 text-sm">
+                    <span class="text-gray-400">Current: </span><span id="current-group-jid" class="font-mono">...</span>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3">Group Aliases</h3>
+                <p class="text-sm text-gray-400 mb-3">Give friendly names to your groups for easier identification:</p>
+                <div id="groups-alias-list" class="space-y-2"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -164,7 +197,9 @@
             if (tab === 'dashboard') loadDashboard()
             if (tab === 'team') loadTeam()
             if (tab === 'schedule') loadSchedule()
+            if (tab === 'send') loadSendGroups()
             if (tab === 'logs') loadLogs()
+            if (tab === 'settings') loadGroups()
         }
 
         // Dashboard
@@ -175,6 +210,8 @@
             document.getElementById('conn-status').className = `text-2xl font-bold mt-1 ${data.connection === 'connected' ? 'text-green-400' : 'text-red-400'}`
             document.getElementById('today-date').textContent = data.today
             document.getElementById('group-jid').textContent = data.groupJid
+            document.getElementById('group-alias').textContent = data.groupAlias || 'Not configured'
+            document.getElementById('group-alias').className = `text-lg font-bold mt-1 ${data.groupAlias ? 'text-green-400' : 'text-yellow-400'}`
 
             const badge = document.getElementById('status-badge')
             badge.textContent = data.connection
@@ -292,6 +329,19 @@
         }
 
         // Manual Send
+        async function loadSendGroups() {
+            const select = document.getElementById('send-group-override')
+            try {
+                const res = await fetch('/api/groups')
+                const groups = await res.json()
+                if (groups.error) return
+                select.innerHTML = '<option value="">Default (configured target)</option>' + groups.map(g => {
+                    const display = g.alias ? `${g.alias}` : g.name
+                    return `<option value="${g.jid}">${display}</option>`
+                }).join('')
+            } catch {}
+        }
+
         async function previewMessage(type) {
             currentPreviewType = type
             const simDate = document.getElementById('sim-date').value || undefined
@@ -306,7 +356,8 @@
             if (!currentPreviewType) return
             if (!confirm(`Send "${currentPreviewType}" to the group${force ? ' (FORCE)' : ''}?`)) return
             const simDate = document.getElementById('sim-date').value || undefined
-            const res = await fetch('/api/send', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ type: currentPreviewType, force, date: simDate }) })
+            const groupOverride = document.getElementById('send-group-override').value || undefined
+            const res = await fetch('/api/send', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ type: currentPreviewType, force, date: simDate, groupJid: groupOverride }) })
             const data = await res.json()
             if (data.sent) {
                 alert('✅ Message sent!')
@@ -331,6 +382,62 @@
                     <p class="text-xs text-gray-300 whitespace-pre-wrap">${(l.content || '').substring(0, 200)}${(l.content || '').length > 200 ? '...' : ''}</p>
                 </div>
             `).join('') || '<p class="text-gray-500">No logs yet</p>'
+        }
+
+        // Settings
+        let groupsCache = []
+
+        async function loadGroups() {
+            const select = document.getElementById('group-select')
+            select.innerHTML = '<option value="">Loading...</option>'
+            try {
+                const [groupsRes, settingsRes] = await Promise.all([fetch('/api/groups'), fetch('/api/settings')])
+                const groups = await groupsRes.json()
+                const settings = await settingsRes.json()
+                const currentJid = settings.group_jid || ''
+
+                document.getElementById('current-group-jid').textContent = currentJid
+
+                if (groups.error) {
+                    select.innerHTML = '<option value="">Bot not connected</option>'
+                    return
+                }
+
+                groupsCache = groups
+                select.innerHTML = '<option value="">Select a group...</option>' + groups.map(g => {
+                    const display = g.alias ? `${g.alias} (${g.name})` : g.name
+                    return `<option value="${g.jid}" ${g.jid === currentJid ? 'selected' : ''}>${display} — ${g.participants} members</option>`
+                }).join('')
+
+                // Render alias list
+                const aliasDiv = document.getElementById('groups-alias-list')
+                aliasDiv.innerHTML = groups.map(g => `
+                    <div class="flex gap-2 items-center bg-gray-700 rounded px-3 py-2">
+                        <span class="text-sm text-gray-400 w-48 truncate" title="${g.name}">${g.name}</span>
+                        <input type="text" value="${g.alias || ''}" placeholder="Enter alias..." 
+                               class="flex-1 bg-gray-600 rounded px-2 py-1 text-sm" id="alias-${g.jid.replace(/[@.]/g, '_')}">
+                        <button onclick="saveAlias('${g.jid}')" class="bg-primary hover:bg-indigo-500 px-3 py-1 rounded text-xs font-medium">Save</button>
+                    </div>
+                `).join('')
+            } catch (err) {
+                select.innerHTML = '<option value="">Error loading groups</option>'
+            }
+        }
+
+        async function saveAlias(jid) {
+            const inputId = `alias-${jid.replace(/[@.]/g, '_')}`
+            const alias = document.getElementById(inputId).value.trim()
+            if (!alias) return alert('Enter an alias')
+            await fetch('/api/groups/alias', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ jid, alias }) })
+            loadGroups()
+        }
+
+        async function saveGroup() {
+            const jid = document.getElementById('group-select').value
+            if (!jid) return alert('Select a group first')
+            await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ key: 'group_jid', value: jid }) })
+            document.getElementById('current-group-jid').textContent = jid
+            alert('✅ Group saved!')
         }
 
         // Init
