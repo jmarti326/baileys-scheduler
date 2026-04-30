@@ -1,12 +1,12 @@
-# 🎬 AV Scheduler Bot
+# 📋 Team Scheduler Bot
 
-A WhatsApp bot for automating audiovisual team scheduling reminders and attendance polls using [Baileys](https://github.com/WhiskeySockets/Baileys).
+A WhatsApp bot for automating team scheduling reminders and attendance polls using [Baileys](https://github.com/WhiskeySockets/Baileys). Built for any recurring service team — audiovisual, worship, ushers, volunteers, and more.
 
 ## Features
 
-- **Automated messages** at 8:00 AM (configurable timezone):
+- **Automated messages** at 9:05 AM (configurable timezone):
   - **Monday**: Weekly schedule summary with tagged team members
-  - **Wednesday**: Friendly reminder for Thursday's AV team
+  - **Wednesday**: Friendly reminder for Thursday's team
   - **Thursday**: Attendance poll for that day's team
   - **Saturday**: Sunday reminder + attendance poll
 - **Web UI** (Tailwind CSS dark theme):
