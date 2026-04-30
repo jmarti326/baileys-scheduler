@@ -198,12 +198,41 @@ function formatDate(dateStr) {
     return `${day}/${month}`
 }
 
+/**
+ * Build personal DM messages for each assigned member
+ * Returns array of { jid, text, role } for each person
+ */
+function buildPersonalNotifications(today, dayType) {
+    const { thursday, sunday } = getWeekDates(today)
+    const serviceDate = dayType === 'thursday' ? thursday : sunday
+    const dayLabel = dayType === 'thursday' ? 'jueves' : 'domingo'
+    const team = getAssignedMembers(serviceDate, dayType)
+
+    return team.map(m => {
+        const jid = `${m.phone}@s.whatsapp.net`
+        let text
+
+        if (m.role === 'primary') {
+            text = `¡Hola ${m.name}! 👋\n\n` +
+                   `Te escribo para recordarte que este *${dayLabel} ${formatDate(serviceDate)}* estás asignado/a como ⭐ *principal* en el equipo audiovisual.\n\n` +
+                   `¡Contamos contigo! Dios te bendiga 🙏`
+        } else {
+            text = `¡Hola ${m.name}! 👋\n\n` +
+                   `Te escribo para informarte que este *${dayLabel} ${formatDate(serviceDate)}* estás asignado/a como *backup* en el equipo audiovisual.\n\n` +
+                   `Esto significa que si alguno de los principales no puede asistir, te estaríamos contactando. ¡Gracias por tu disponibilidad! 🙏`
+        }
+
+        return { jid, text, role: m.role, name: m.name, phone: m.phone }
+    })
+}
+
 module.exports = {
     buildMondaySummary,
     buildWednesdayReminder,
     buildThursdayPoll,
     buildSaturdayReminder,
     buildSaturdayPoll,
+    buildPersonalNotifications,
     getAssignedMembers,
     getWeekDates
 }

@@ -2,7 +2,7 @@ const express = require('express')
 const { getDb } = require('./database')
 const { getStatus, getSocket } = require('./bot')
 const { sendScheduledMessage, getToday, getGroupJid } = require('./scheduler')
-const { buildMondaySummary, buildWednesdayReminder, buildThursdayPoll, buildSaturdayReminder, buildSaturdayPoll } = require('./messages')
+const { buildMondaySummary, buildWednesdayReminder, buildThursdayPoll, buildSaturdayReminder, buildSaturdayPoll, buildPersonalNotifications } = require('./messages')
 
 const router = express.Router()
 
@@ -145,6 +145,45 @@ router.post('/api/send', async (req, res) => {
 
     const result = await sendScheduledMessage(type, buildFns[type], force === true, date, groupJid)
     res.json(result)
+})
+
+// --- API: Personal DMs ---
+router.post('/api/personal/preview', (req, res) => {
+    const { date, dayType } = req.body
+    const targetDate = date || getToday()
+    const type = dayType || 'thursday'
+    try {
+        const notifications = buildPersonalNotifications(targetDate, type)
+        res.json(notifications)
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+})
+
+router.post('/api/personal/send', async (req, res) => {
+    const { date, dayType, phone } = req.body
+    const targetDate = date || getToday()
+    const type = dayType || 'thursday'
+
+    if (getStatus() !== 'connected') {
+        return res.status(503).json({ error: 'Bot not connected' })
+    }
+
+    try {
+        const { sendTextMessage } = require('./bot')
+        const notifications = buildPersonalNotifications(targetDate, type)
+        const toSend = phone ? notifications.filter(n => n.phone === phone) : notifications
+        const results = []
+
+        for (const n of toSend) {
+            await sendTextMessage(n.jid, n.text)
+            results.push({ name: n.name, role: n.role, sent: true })
+        }
+
+        res.json({ sent: results.length, results })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
 // --- API: Settings ---

@@ -145,6 +145,20 @@
                     <p class="text-xs text-gray-500 mt-2">Force Send ignores the "already sent today" check.</p>
                 </div>
             </div>
+
+            <!-- Personal DMs Section -->
+            <div class="bg-gray-800 rounded-lg p-4 mt-4">
+                <h3 class="text-lg font-semibold mb-3">📩 Personal DMs</h3>
+                <p class="text-sm text-gray-400 mb-3">Send individual messages to each team member letting them know their role.</p>
+                <div class="flex gap-3 mb-4">
+                    <select id="dm-day-type" class="bg-gray-700 rounded px-3 py-2 text-sm">
+                        <option value="thursday">Thursday team</option>
+                        <option value="sunday">Sunday team</option>
+                    </select>
+                    <button onclick="previewPersonalDMs()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded text-sm font-medium">👁️ Preview DMs</button>
+                </div>
+                <div id="personal-dm-list" class="space-y-3"></div>
+            </div>
         </div>
 
         <!-- Logs Tab -->
@@ -340,6 +354,49 @@
                     return `<option value="${g.jid}">${display}</option>`
                 }).join('')
             } catch {}
+        }
+
+        async function previewPersonalDMs() {
+            const simDate = document.getElementById('sim-date').value || undefined
+            const dayType = document.getElementById('dm-day-type').value
+            const res = await fetch('/api/personal/preview', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ date: simDate, dayType }) })
+            const notifications = await res.json()
+            const div = document.getElementById('personal-dm-list')
+
+            if (notifications.error || notifications.length === 0) {
+                div.innerHTML = '<p class="text-gray-500">No team members found for this date/day.</p>'
+                return
+            }
+
+            div.innerHTML = notifications.map(n => `
+                <div class="bg-gray-700 rounded p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-medium">${n.role === 'primary' ? '⭐' : '•'} ${n.name} <span class="text-gray-400 text-xs">+${n.phone}</span> ${n.role === 'backup' ? '<span class="bg-yellow-800 text-yellow-200 text-xs px-2 py-0.5 rounded ml-1">Backup</span>' : ''}</span>
+                        <button onclick="sendPersonalDM('${n.phone}', '${dayType}')" class="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-xs font-medium">📩 Send DM</button>
+                    </div>
+                    <p class="text-xs text-gray-300 whitespace-pre-wrap">${n.text}</p>
+                </div>
+            `).join('') + `
+                <button onclick="sendAllPersonalDMs('${dayType}')" class="w-full mt-2 bg-green-700 hover:bg-green-600 px-4 py-2 rounded text-sm font-medium">📩 Send All DMs</button>
+            `
+        }
+
+        async function sendPersonalDM(phone, dayType) {
+            if (!confirm(`Send personal DM to +${phone}?`)) return
+            const simDate = document.getElementById('sim-date').value || undefined
+            const res = await fetch('/api/personal/send', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ date: simDate, dayType, phone }) })
+            const data = await res.json()
+            if (data.sent) alert('✅ DM sent!')
+            else alert('❌ Error: ' + (data.error || 'Unknown'))
+        }
+
+        async function sendAllPersonalDMs(dayType) {
+            if (!confirm('Send personal DMs to ALL listed members?')) return
+            const simDate = document.getElementById('sim-date').value || undefined
+            const res = await fetch('/api/personal/send', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ date: simDate, dayType }) })
+            const data = await res.json()
+            if (data.sent) alert(`✅ Sent ${data.sent} DMs!`)
+            else alert('❌ Error: ' + (data.error || 'Unknown'))
         }
 
         async function previewMessage(type) {

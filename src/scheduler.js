@@ -72,26 +72,26 @@ async function sendScheduledMessage(type, buildFn, forceSend = false, dateOverri
 }
 
 function startScheduler() {
-    // Monday 8:00 AM AST - Weekly summary
-    cron.schedule('0 8 * * 1', () => {
+    // Monday 9:05 AM AST - Weekly summary
+    cron.schedule('5 9 * * 1', () => {
         console.log('[CRON] Monday summary triggered')
         sendScheduledMessage('monday-summary', buildMondaySummary)
     }, { timezone: 'America/Puerto_Rico' })
 
-    // Wednesday 8:00 AM AST - Thursday reminder
-    cron.schedule('0 8 * * 3', () => {
+    // Wednesday 9:05 AM AST - Thursday reminder
+    cron.schedule('5 9 * * 3', () => {
         console.log('[CRON] Wednesday reminder triggered')
         sendScheduledMessage('wednesday-reminder', buildWednesdayReminder)
     }, { timezone: 'America/Puerto_Rico' })
 
-    // Thursday 8:00 AM AST - Thursday poll
-    cron.schedule('0 8 * * 4', () => {
+    // Thursday 9:05 AM AST - Thursday poll
+    cron.schedule('5 9 * * 4', () => {
         console.log('[CRON] Thursday poll triggered')
         sendScheduledMessage('thursday-poll', null)
     }, { timezone: 'America/Puerto_Rico' })
 
-    // Saturday 8:00 AM AST - Sunday reminder + poll
-    cron.schedule('0 8 * * 6', () => {
+    // Saturday 9:05 AM AST - Sunday reminder + poll
+    cron.schedule('5 9 * * 6', () => {
         console.log('[CRON] Saturday reminder + poll triggered')
         sendScheduledMessage('saturday-reminder', buildSaturdayReminder)
         setTimeout(() => {
@@ -99,7 +99,7 @@ function startScheduler() {
         }, 3000) // small delay between messages
     }, { timezone: 'America/Puerto_Rico' })
 
-    console.log('[SCHEDULER] ✅ Cron jobs started (Mon/Wed/Thu/Sat at 8:00 AM AST)')
+    console.log('[SCHEDULER] ✅ Cron jobs started (Mon/Wed/Thu/Sat at 9:05 AM AST)')
 }
 
 module.exports = { startScheduler, sendScheduledMessage, getToday, getGroupJid }
