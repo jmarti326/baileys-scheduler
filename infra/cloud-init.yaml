@@ -1,0 +1,102 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - git
+
+runcmd:
+  # Install Docker CE
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+  # Enable Docker and start on boot
+  - systemctl enable docker
+  - systemctl start docker
+
+  # Add admin user to docker group
+  - usermod -aG docker azureuser
+
+  # Create app directory structure
+  - mkdir -p /opt/team-scheduler/data
+
+  # Create docker-compose.yml for the app
+  - |
+    cat > /opt/team-scheduler/docker-compose.yml << 'EOF'
+    services:
+      team-scheduler:
+        image: ghcr.io/jmarti326/baileys-scheduler:latest
+        container_name: team-scheduler-bot
+        restart: unless-stopped
+        ports:
+          - "3000:3000"
+        volumes:
+          - ./data:/app/data
+        environment:
+          - TZ=America/Puerto_Rico
+          - PORT=3000
+    EOF
+
+  # Create Caddyfile for reverse proxy with auto-TLS
+  - |
+    cat > /opt/team-scheduler/Caddyfile << 'EOF'
+    :80 {
+        reverse_proxy localhost:3000
+    }
+    EOF
+
+  # Create Caddy docker-compose override for reverse proxy
+  - |
+    cat > /opt/team-scheduler/docker-compose.override.yml << 'EOF'
+    services:
+      caddy:
+        image: caddy:2-alpine
+        container_name: caddy-proxy
+        restart: unless-stopped
+        ports:
+          - "80:80"
+          - "443:443"
+        volumes:
+          - ./Caddyfile:/etc/caddy/Caddyfile
+          - caddy_data:/data
+          - caddy_config:/config
+        depends_on:
+          - team-scheduler
+
+    volumes:
+      caddy_data:
+      caddy_config:
+    EOF
+
+  # Create systemd service for auto-start on reboot
+  - |
+    cat > /etc/systemd/system/team-scheduler.service << 'EOF'
+    [Unit]
+    Description=Team Scheduler Bot
+    After=docker.service
+    Requires=docker.service
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    WorkingDirectory=/opt/team-scheduler
+    ExecStart=/usr/bin/docker compose up -d
+    ExecStop=/usr/bin/docker compose down
+    TimeoutStartSec=120
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+
+  - systemctl daemon-reload
+  - systemctl enable team-scheduler.service
+
+  # Set ownership
+  - chown -R azureuser:azureuser /opt/team-scheduler
