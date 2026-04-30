@@ -1,0 +1,21 @@
+{
+  "name": "baileys-scheduler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "baileys": "^7.0.0-rc.9",
+    "better-sqlite3": "^12.9.0",
+    "express": "^5.2.1",
+    "node-cron": "^4.2.1",
+    "pino": "^10.3.1"
+  }
+}

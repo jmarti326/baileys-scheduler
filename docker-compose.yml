@@ -1,0 +1,12 @@
+services:
+  av-scheduler:
+    build: .
+    container_name: av-scheduler-bot
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=America/Puerto_Rico
+      - PORT=3000
