@@ -3,5 +3,6 @@ data/auth_info/
 data/scheduler.db
 data/scheduler.db-wal
 data/scheduler.db-shm
+data/groups.json
 *.log
 .env

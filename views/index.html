@@ -24,6 +24,7 @@
             <button onclick="showTab('dashboard')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="dashboard">Dashboard</button>
             <button onclick="showTab('team')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="team">Team</button>
             <button onclick="showTab('schedule')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="schedule">Schedule</button>
+            <button onclick="showTab('calendar')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="calendar">📅 Calendar</button>
             <button onclick="showTab('send')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="send">Manual Send</button>
             <button onclick="showTab('logs')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="logs">Logs</button>
             <button onclick="showTab('settings')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="settings">Settings</button>
@@ -91,6 +92,33 @@
             <div class="bg-gray-800 rounded-lg p-4">
                 <h3 class="text-lg font-semibold mb-3">Upcoming Schedule</h3>
                 <div id="schedule-list" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Calendar Tab -->
+        <div id="tab-calendar" class="tab-content hidden">
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <button onclick="changeMonth(-1)" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-sm font-medium">← Prev</button>
+                    <h3 id="calendar-title" class="text-xl font-bold text-white"></h3>
+                    <button onclick="changeMonth(1)" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-sm font-medium">Next →</button>
+                </div>
+                <div class="flex gap-4 justify-center mb-4 text-xs">
+                    <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-indigo-700"></span> Thursday</span>
+                    <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-emerald-700"></span> Sunday</span>
+                    <span class="flex items-center gap-1">⭐ Primary</span>
+                    <span class="flex items-center gap-1"><span class="text-yellow-400">🔄</span> Backup</span>
+                </div>
+                <div class="grid grid-cols-7 gap-1">
+                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Sun</div>
+                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Mon</div>
+                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Tue</div>
+                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Wed</div>
+                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Thu</div>
+                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Fri</div>
+                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Sat</div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
             </div>
         </div>
 
@@ -211,6 +239,7 @@
             if (tab === 'dashboard') loadDashboard()
             if (tab === 'team') loadTeam()
             if (tab === 'schedule') loadSchedule()
+            if (tab === 'calendar') loadCalendar()
             if (tab === 'send') loadSendGroups()
             if (tab === 'logs') loadLogs()
             if (tab === 'settings') loadGroups()
@@ -340,6 +369,84 @@
         async function deleteSchedule(id) {
             await fetch(`/api/schedule/${id}`, { method: 'DELETE' })
             loadSchedule()
+        }
+
+        // Calendar
+        let calendarYear = new Date().getFullYear()
+        let calendarMonth = new Date().getMonth() + 1
+
+        const MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December']
+
+        function changeMonth(delta) {
+            calendarMonth += delta
+            if (calendarMonth > 12) { calendarMonth = 1; calendarYear++ }
+            if (calendarMonth < 1) { calendarMonth = 12; calendarYear-- }
+            loadCalendar()
+        }
+
+        async function loadCalendar() {
+            document.getElementById('calendar-title').textContent = `${MONTH_NAMES[calendarMonth]} ${calendarYear}`
+            const res = await fetch(`/api/calendar/${calendarYear}/${calendarMonth}`)
+            const data = await res.json()
+            const grid = document.getElementById('calendar-grid')
+
+            // First day of month (0=Sun)
+            const firstDow = new Date(calendarYear, calendarMonth - 1, 1).getDay()
+            const today = new Date()
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+
+            let html = ''
+
+            // Empty cells before first day
+            for (let i = 0; i < firstDow; i++) {
+                html += '<div class="min-h-[90px] rounded bg-gray-900/30"></div>'
+            }
+
+            for (let day = 1; day <= data.lastDay; day++) {
+                const dateStr = `${calendarYear}-${String(calendarMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+                const entries = data.entries[dateStr] || []
+                const isToday = dateStr === todayStr
+                const dow = new Date(calendarYear, calendarMonth - 1, day).getDay()
+                const isServiceDay = dow === 0 || dow === 4 // Sunday or Thursday
+
+                let borderClass = isToday ? 'ring-2 ring-primary' : ''
+                let bgClass = 'bg-gray-900/50'
+                if (entries.length > 0) {
+                    const hasThursday = entries.some(e => e.day_type === 'thursday')
+                    const hasSunday = entries.some(e => e.day_type === 'sunday')
+                    if (hasThursday && hasSunday) bgClass = 'bg-gradient-to-br from-indigo-900/40 to-emerald-900/40'
+                    else if (hasThursday) bgClass = 'bg-indigo-900/30'
+                    else if (hasSunday) bgClass = 'bg-emerald-900/30'
+                }
+
+                html += `<div class="min-h-[90px] rounded p-1.5 ${bgClass} ${borderClass}">`
+                html += `<div class="text-xs font-bold ${isToday ? 'text-primary' : isServiceDay ? 'text-gray-200' : 'text-gray-500'} mb-1">${day}</div>`
+
+                if (entries.length > 0) {
+                    // Group by day_type
+                    const byType = {}
+                    entries.forEach(e => {
+                        if (!byType[e.day_type]) byType[e.day_type] = []
+                        byType[e.day_type].push(e)
+                    })
+                    for (const [dtype, people] of Object.entries(byType)) {
+                        const typeLabel = dtype === 'thursday' ? 'Thu' : 'Sun'
+                        const typeColor = dtype === 'thursday' ? 'text-indigo-300' : 'text-emerald-300'
+                        html += `<div class="text-[10px] font-semibold ${typeColor} uppercase tracking-wide">${typeLabel}</div>`
+                        people.forEach(p => {
+                            const icon = p.role === 'primary' ? '⭐' : '🔄'
+                            const nameColor = p.role === 'primary' ? 'text-gray-100' : 'text-yellow-300/70'
+                            const roleSuffix = p.role === 'backup' ? ' <span class="text-yellow-500/60 italic">(B)</span>' : ''
+                            html += `<div class="text-[11px] ${nameColor} leading-tight truncate" title="${p.name} — ${p.role}">${icon} ${p.name}${roleSuffix}</div>`
+                        })
+                    }
+                }
+
+                html += '</div>'
+            }
+
+            grid.innerHTML = html
         }
 
         // Manual Send
