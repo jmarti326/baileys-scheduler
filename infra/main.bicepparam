@@ -1,6 +1,6 @@
 using 'main.bicep'
 
-param location = 'eastus'
+param location = 'eastus2'
 param vmName = 'vm-team-scheduler'
 param adminUsername = 'azureuser'
 param vmSize = 'Standard_B1s'
