@@ -1,6 +1,7 @@
 const express = require('express')
 const session = require('express-session')
 const SqliteStore = require('better-sqlite3-session-store')(session)
+const rateLimit = require('express-rate-limit')
 const path = require('path')
 const { getDb } = require('./database')
 const { connectBot } = require('./bot')
@@ -49,8 +50,17 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'views', 'login.html'))
 })
 
+// Rate limiter for auth endpoints (5 attempts per 15 min per IP)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: { error: 'Too many login attempts. Try again in 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false
+})
+
 // Login API (public)
-app.post('/api/login', (req, res) => {
+app.post('/api/login', authLimiter, (req, res) => {
     const { username, password } = req.body
     if (!username || !password) {
         return res.status(400).json({ error: 'Username and password required' })
@@ -74,7 +84,7 @@ app.get('/setup', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'views', 'setup.html'))
 })
 
-app.post('/api/setup', (req, res) => {
+app.post('/api/setup', authLimiter, (req, res) => {
     if (hasAnyUsers()) return res.status(403).json({ error: 'Setup already complete' })
     const { username, password } = req.body
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' })
