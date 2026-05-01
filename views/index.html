@@ -16,7 +16,11 @@
         <!-- Header -->
         <div class="flex items-center justify-between mb-8">
             <h1 class="text-3xl font-bold text-white">⛪ IPR Team Scheduler Agent</h1>
-            <div id="status-badge" class="px-3 py-1 rounded-full text-sm font-medium"></div>
+            <div class="flex items-center gap-3">
+                <span id="user-badge" class="text-sm text-gray-400"></span>
+                <div id="status-badge" class="px-3 py-1 rounded-full text-sm font-medium"></div>
+                <button onclick="logout()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm">Logout</button>
+            </div>
         </div>
 
         <!-- Tabs -->
@@ -218,6 +222,31 @@
                 <h3 class="text-lg font-semibold mb-3">Group Aliases</h3>
                 <p class="text-sm text-gray-400 mb-3">Give friendly names to your groups for easier identification:</p>
                 <div id="groups-alias-list" class="space-y-2"></div>
+            </div>
+
+            <!-- User Management (admin only) -->
+            <div id="users-section" class="bg-gray-800 rounded-lg p-4 mt-4 hidden">
+                <h3 class="text-lg font-semibold mb-3">👤 User Management</h3>
+                <div class="mb-4 p-3 bg-gray-700 rounded">
+                    <h4 class="text-sm text-gray-400 mb-2">Add User</h4>
+                    <div class="flex gap-2">
+                        <input id="new-user" type="text" placeholder="Username" class="flex-1 bg-gray-600 rounded px-3 py-2 text-sm">
+                        <input id="new-pass" type="password" placeholder="Password (min 6)" class="flex-1 bg-gray-600 rounded px-3 py-2 text-sm">
+                        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" id="new-admin"> Admin</label>
+                        <button onclick="addUser()" class="bg-primary hover:bg-indigo-500 px-4 py-2 rounded text-sm font-medium">Add</button>
+                    </div>
+                </div>
+                <div id="users-list" class="space-y-2"></div>
+            </div>
+
+            <!-- Change Password -->
+            <div class="bg-gray-800 rounded-lg p-4 mt-4">
+                <h3 class="text-lg font-semibold mb-3">🔒 Change Password</h3>
+                <div class="flex gap-2">
+                    <input id="curr-pass" type="password" placeholder="Current password" class="flex-1 bg-gray-700 rounded px-3 py-2 text-sm">
+                    <input id="new-password" type="password" placeholder="New password (min 6)" class="flex-1 bg-gray-700 rounded px-3 py-2 text-sm">
+                    <button onclick="changePassword()" class="bg-yellow-600 hover:bg-yellow-500 px-4 py-2 rounded text-sm font-medium">Update</button>
+                </div>
             </div>
         </div>
     </div>
@@ -604,7 +633,71 @@
             alert('✅ Group saved!')
         }
 
+        // Auth / Users
+        async function loadCurrentUser() {
+            const res = await fetch('/api/me')
+            if (res.status === 401) { window.location.href = '/login'; return }
+            const user = await res.json()
+            document.getElementById('user-badge').textContent = `👤 ${user.username}${user.isAdmin ? ' (admin)' : ''}`
+            if (user.isAdmin) {
+                document.getElementById('users-section').classList.remove('hidden')
+                loadUsers()
+            }
+        }
+
+        async function loadUsers() {
+            const res = await fetch('/api/users')
+            if (res.status === 403) return
+            const users = await res.json()
+            const div = document.getElementById('users-list')
+            div.innerHTML = users.map(u => `
+                <div class="flex justify-between items-center bg-gray-700 rounded px-3 py-2">
+                    <div>
+                        <span class="font-medium">${u.username}</span>
+                        ${u.is_admin ? '<span class="bg-indigo-800 text-indigo-200 text-xs px-2 py-0.5 rounded ml-2">Admin</span>' : ''}
+                        <span class="text-gray-500 text-xs ml-2">${u.created_at}</span>
+                    </div>
+                    <button onclick="deleteUser(${u.id}, '${u.username}')" class="text-red-400 hover:text-red-300 text-sm">✕ Remove</button>
+                </div>
+            `).join('')
+        }
+
+        async function addUser() {
+            const username = document.getElementById('new-user').value.trim()
+            const password = document.getElementById('new-pass').value
+            const isAdmin = document.getElementById('new-admin').checked
+            if (!username || !password) return alert('Username and password required')
+            const res = await fetch('/api/users', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ username, password, isAdmin }) })
+            const data = await res.json()
+            if (data.success) { document.getElementById('new-user').value = ''; document.getElementById('new-pass').value = ''; loadUsers() }
+            else alert('❌ ' + data.error)
+        }
+
+        async function deleteUser(id, name) {
+            if (!confirm(`Remove user "${name}"?`)) return
+            const res = await fetch(`/api/users/${id}`, { method: 'DELETE' })
+            const data = await res.json()
+            if (data.success) loadUsers()
+            else alert('❌ ' + data.error)
+        }
+
+        async function changePassword() {
+            const curr = document.getElementById('curr-pass').value
+            const newP = document.getElementById('new-password').value
+            if (!curr || !newP) return alert('Both fields required')
+            const res = await fetch('/api/users/change-password', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ currentPassword: curr, newPassword: newP }) })
+            const data = await res.json()
+            if (data.success) { alert('✅ Password updated!'); document.getElementById('curr-pass').value = ''; document.getElementById('new-password').value = '' }
+            else alert('❌ ' + data.error)
+        }
+
+        async function logout() {
+            await fetch('/api/logout', { method: 'POST' })
+            window.location.href = '/login'
+        }
+
         // Init
+        loadCurrentUser()
         showTab('dashboard')
         setInterval(loadDashboard, 10000)
     </script>

@@ -1,7 +1,7 @@
 services:
-  av-scheduler:
+  team-scheduler:
     build: .
-    container_name: av-scheduler-bot
+    container_name: team-scheduler-bot
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -10,3 +10,6 @@ services:
     environment:
       - TZ=America/Puerto_Rico
       - PORT=3000
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-to-a-random-string}
+      - ADMIN_USER=${ADMIN_USER:-}
+      - ADMIN_PASS=${ADMIN_PASS:-}
