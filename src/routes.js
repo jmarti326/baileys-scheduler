@@ -3,6 +3,8 @@ const { getDb } = require('./database')
 const { getStatus, getSocket } = require('./bot')
 const { sendScheduledMessage, getToday, getGroupJid } = require('./scheduler')
 const { buildMondaySummary, buildWednesdayReminder, buildThursdayPoll, buildSaturdayReminder, buildSaturdayPoll, buildPersonalNotifications } = require('./messages')
+const { getUsers, createUser, deleteUser, changePassword } = require('./auth')
+const bcrypt = require('bcrypt')
 
 const router = express.Router()
 
@@ -269,6 +271,52 @@ router.get('/api/logs', (req, res) => {
     const db = getDb()
     const logs = db.prepare('SELECT * FROM message_logs ORDER BY sent_at DESC LIMIT 50').all()
     res.json(logs)
+})
+
+// --- API: Users (admin only) ---
+router.get('/api/users', (req, res) => {
+    if (!req.session.isAdmin) return res.status(403).json({ error: 'Admin only' })
+    res.json(getUsers())
+})
+
+router.post('/api/users', (req, res) => {
+    if (!req.session.isAdmin) return res.status(403).json({ error: 'Admin only' })
+    const { username, password, isAdmin } = req.body
+    if (!username || !password) return res.status(400).json({ error: 'Username and password required' })
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' })
+    try {
+        createUser(username, password, isAdmin ? 1 : 0)
+        res.json({ success: true })
+    } catch (err) {
+        res.status(400).json({ error: err.message })
+    }
+})
+
+router.delete('/api/users/:id', (req, res) => {
+    if (!req.session.isAdmin) return res.status(403).json({ error: 'Admin only' })
+    const id = parseInt(req.params.id)
+    if (id === req.session.userId) return res.status(400).json({ error: 'Cannot delete yourself' })
+    deleteUser(id)
+    res.json({ success: true })
+})
+
+router.post('/api/users/change-password', (req, res) => {
+    const { currentPassword, newPassword } = req.body
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' })
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' })
+
+    const db = getDb()
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId)
+    if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
+        return res.status(401).json({ error: 'Current password is incorrect' })
+    }
+    changePassword(req.session.userId, newPassword)
+    res.json({ success: true })
+})
+
+// --- API: Current user ---
+router.get('/api/me', (req, res) => {
+    res.json({ username: req.session.username, isAdmin: req.session.isAdmin })
 })
 
 module.exports = router
