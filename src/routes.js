@@ -7,6 +7,7 @@ const { getUsers, createUser, deleteUser, changePassword } = require('./auth')
 const bcrypt = require('bcrypt')
 
 const router = express.Router()
+const appVersion = require('../package.json').version
 
 // --- API: Dashboard ---
 router.get('/api/status', (req, res) => {
@@ -15,6 +16,7 @@ router.get('/api/status', (req, res) => {
     const groupJid = getGroupJid()
     const alias = db.prepare('SELECT alias FROM group_aliases WHERE jid = ?').get(groupJid)
     res.json({
+        version: appVersion,
         connection: getStatus(),
         groupJid,
         groupAlias: alias?.alias || null,

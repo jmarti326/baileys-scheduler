@@ -1,5 +1,7 @@
 const { getDb } = require('./database')
 
+const AUTO_FOOTER = '\n\n_🤖 Mensaje enviado automáticamente por IPR Team Scheduler AI Agent_'
+
 /**
  * Get the schedule for a specific date and day type
  * Returns array of { name, phone, role } for assigned members
@@ -97,7 +99,7 @@ function buildMondaySummary(today) {
         text += `  ⚠️ Sin asignar\n`
     }
 
-    text += `\n¡Bendiciones! 🙏`
+    text += `\n¡Bendiciones! 🙏` + AUTO_FOOTER
 
     return { text, mentions }
 }
@@ -124,7 +126,7 @@ function buildWednesdayReminder(today) {
         text += `  ⚠️ Sin asignar\n`
     }
 
-    text += `\n¡Dios les bendiga! 🙌`
+    text += `\n¡Dios les bendiga! 🙌` + AUTO_FOOTER
 
     return { text, mentions }
 }
@@ -170,7 +172,7 @@ function buildSaturdayReminder(today) {
         text += `  ⚠️ Sin asignar\n`
     }
 
-    text += `\n¡Dios les bendiga! 🙌`
+    text += `\n¡Dios les bendiga! 🙌` + AUTO_FOOTER
 
     return { text, mentions }
 }
@@ -215,11 +217,11 @@ function buildPersonalNotifications(today, dayType) {
         if (m.role === 'primary') {
             text = `¡Hola ${m.name}! 👋\n\n` +
                    `Te escribo para recordarte que este *${dayLabel} ${formatDate(serviceDate)}* estás asignado/a como ⭐ *principal* en el equipo audiovisual.\n\n` +
-                   `¡Contamos contigo! Dios te bendiga 🙏`
+                   `¡Contamos contigo! Dios te bendiga 🙏` + AUTO_FOOTER
         } else {
             text = `¡Hola ${m.name}! 👋\n\n` +
                    `Te escribo para informarte que este *${dayLabel} ${formatDate(serviceDate)}* estás asignado/a como *backup* en el equipo audiovisual.\n\n` +
-                   `Esto significa que si alguno de los principales no puede asistir, te estaríamos contactando. ¡Gracias por tu disponibilidad! 🙏`
+                   `Esto significa que si alguno de los principales no puede asistir, te estaríamos contactando. ¡Gracias por tu disponibilidad! 🙏` + AUTO_FOOTER
         }
 
         return { jid, text, role: m.role, name: m.name, phone: m.phone }
