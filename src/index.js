@@ -3,8 +3,6 @@ const session = require('express-session')
 const rateLimit = require('express-rate-limit')
 const path = require('path')
 const { getDb } = require('./db/index')
-const { connectBot } = require('./bot')
-const { startScheduler } = require('./scheduler')
 const { initUsersTable, seedAdminFromEnv, requireAuth, hasAnyUsers, authenticate, createUser } = require('./auth')
 const routes = require('./routes')
 
@@ -42,6 +40,8 @@ async function start() {
     await seedAdminFromEnv()
 
     if (IS_WORKER) {
+        const { connectBot } = require('./bot')
+        const { startScheduler } = require('./scheduler')
         await connectBot()
         console.log('[APP] ✅ Bot connecting...')
         startScheduler()

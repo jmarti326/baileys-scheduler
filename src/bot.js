@@ -12,6 +12,8 @@ async function connectBot() {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_PATH)
     const { version } = await fetchLatestBaileysVersion()
 
+    const usePairingCode = !!process.env.WHATSAPP_PHONE && !state.creds.registered
+
     sock = makeWASocket({
         version,
         logger,
@@ -20,7 +22,22 @@ async function connectBot() {
             keys: makeCacheableSignalKeyStore(state.keys, logger),
         },
         generateHighQualityLinkPreview: true,
+        printQRInTerminal: !usePairingCode,
     })
+
+    if (usePairingCode) {
+        // Wait a moment for socket to be ready, then request pairing code
+        setTimeout(async () => {
+            try {
+                const phone = process.env.WHATSAPP_PHONE.replace(/[^0-9]/g, '')
+                const code = await sock.requestPairingCode(phone)
+                console.log(`[BOT] 📱 Pairing code: ${code}`)
+                console.log(`[BOT] Enter this code in WhatsApp > Linked Devices > Link with phone number`)
+            } catch (err) {
+                console.error('[BOT] Failed to request pairing code:', err.message)
+            }
+        }, 3000)
+    }
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update
@@ -41,7 +58,6 @@ async function connectBot() {
             const reason = lastDisconnect?.error?.message || 'unknown'
             console.log(`[BOT] ⚠️ Connection closed (code: ${statusCode}, reason: ${reason})`)
             if (statusCode !== DisconnectReason.loggedOut) {
-                // Avoid rapid reconnect loops
                 const delay = statusCode === 408 || statusCode === 503 ? 15000 : 5000
                 console.log(`[BOT] 🔄 Reconnecting in ${delay/1000}s...`)
                 setTimeout(connectBot, delay)

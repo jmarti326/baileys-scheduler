@@ -6,3 +6,4 @@ data/scheduler.db-shm
 data/groups.json
 *.log
 .env
+.vercel

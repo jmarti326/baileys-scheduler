@@ -1,10 +1,36 @@
 const express = require('express')
 const { getDb } = require('./db/index')
-const { getStatus, getSocket } = require('./bot')
-const { sendScheduledMessage, getToday, getGroupJid } = require('./scheduler')
 const { buildMondaySummary, buildWednesdayReminder, buildThursdayPoll, buildSaturdayReminder, buildSaturdayPoll, buildPersonalNotifications } = require('./messages')
 const { getUsers, createUser, deleteUser, changePassword } = require('./auth')
 const bcrypt = require('bcrypt')
+
+// Bot and scheduler functions are loaded lazily to avoid pulling in ESM-only baileys on Vercel
+function getBotModule() {
+    try { return require('./bot') } catch { return null }
+}
+function getSchedulerModule() {
+    try { return require('./scheduler') } catch { return null }
+}
+function getStatus() {
+    const bot = getBotModule()
+    return bot ? bot.getStatus() : 'disconnected'
+}
+function getSocket() {
+    const bot = getBotModule()
+    return bot ? bot.getSocket() : null
+}
+function sendScheduledMessage(...args) {
+    const sched = getSchedulerModule()
+    return sched ? sched.sendScheduledMessage(...args) : Promise.resolve()
+}
+function getToday() {
+    const sched = getSchedulerModule()
+    return sched ? sched.getToday() : new Date().toISOString().slice(0, 10)
+}
+function getGroupJid() {
+    const sched = getSchedulerModule()
+    return sched ? sched.getGroupJid() : Promise.resolve(null)
+}
 
 const router = express.Router()
 const appVersion = require('../package.json').version
