@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 # Required repository secrets:
-#   VERCEL_TOKEN        — create at vercel.com/account/tokens
+#   VERCEL_TOKEN        — create at vercel.com/account/tokens (full account scope, NOT project-scoped)
 #   VERCEL_ORG_ID       — team ID from vercel.com/[team]/settings
 #   VERCEL_PROJECT_ID   — project ID from vercel.com/[team]/[project]/settings
 
@@ -14,9 +14,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
-    env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
     steps:
       - name: Checkout repository
@@ -28,17 +25,27 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install dependencies
+        run: npm ci --omit=dev
+
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Deploy to production
+      - name: Deploy to Vercel
         id: deploy
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          URL=$(vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }})
+          # Create project link
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          # Deploy from source (Vercel handles the build remotely)
+          URL=$(vercel --prod --yes --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | tail -1)
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "✅ Deployed to: $URL"
 
-      - name: Verify deployment is healthy
+      - name: Verify deployment
         if: steps.deploy.outputs.url != ''
         run: |
           sleep 10
