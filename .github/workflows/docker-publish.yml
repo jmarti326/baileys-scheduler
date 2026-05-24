@@ -100,6 +100,14 @@ jobs:
                 "database-url=${{ secrets.DATABASE_URL }}" \
                 "session-secret=${{ secrets.SESSION_SECRET }}"
 
+            # Set WHATSAPP_PHONE env var if secret exists
+            if [ -n "${{ secrets.WHATSAPP_PHONE }}" ]; then
+              az containerapp update \
+                --name "${{ secrets.AZURE_CONTAINER_APP }}" \
+                --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+                --set-env-vars "WHATSAPP_PHONE=${{ secrets.WHATSAPP_PHONE }}"
+            fi
+
       - name: Verify deployment
         uses: azure/CLI@v2
         with:
