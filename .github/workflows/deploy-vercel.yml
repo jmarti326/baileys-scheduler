@@ -1,14 +1,28 @@
 name: Deploy to Vercel
 
+# Disabled auto-trigger — Vercel auto-deploys when connected to GitHub directly.
+# To enable this workflow, you need a FULL-ACCOUNT Vercel token (not project-scoped).
+# See the instructions below.
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
 
-# Required repository secrets:
-#   VERCEL_TOKEN        — create at vercel.com/account/tokens (full account scope, NOT project-scoped)
-#   VERCEL_ORG_ID       — team ID from vercel.com/[team]/settings
-#   VERCEL_PROJECT_ID   — project ID from vercel.com/[team]/[project]/settings
+# ──────────────────────────────────────────────────────────────────────────────
+# RECOMMENDED SETUP (no workflow needed):
+#   1. Go to vercel.com → your project → Settings → Git
+#   2. Connect your GitHub repo (jmarti326/baileys-scheduler)
+#   3. Set "Production Branch" to master
+#   4. In Settings → Environment Variables, add:
+#        DATABASE_URL = your Neon connection string
+#        SESSION_SECRET = your session secret
+#   5. Vercel auto-deploys on every push to master. Done!
+#
+# ALTERNATIVE (this workflow):
+#   If you want to use GitHub Actions instead of Vercel's built-in Git integration:
+#   1. Create a FULL-ACCOUNT token at vercel.com/account/tokens
+#      (NOT a project-scoped token — those cannot read project settings)
+#   2. Update the VERCEL_TOKEN secret with the full-account token
+#   3. Change the trigger above from workflow_dispatch to push/branches:[master]
+# ──────────────────────────────────────────────────────────────────────────────
 
 jobs:
   deploy:
@@ -25,9 +39,6 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci --omit=dev
-
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
@@ -37,11 +48,11 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          # Create project link
           mkdir -p .vercel
           printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
-          # Deploy from source (Vercel handles the build remotely)
-          URL=$(vercel --prod --yes --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | tail -1)
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "✅ Deployed to: $URL"
 
