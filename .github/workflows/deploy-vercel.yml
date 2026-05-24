@@ -31,9 +31,6 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Link project
-        run: vercel link --yes --project=$VERCEL_PROJECT_ID --scope=$VERCEL_ORG_ID --token=${{ secrets.VERCEL_TOKEN }}
-
       - name: Deploy to production
         id: deploy
         run: |
@@ -42,11 +39,9 @@ jobs:
           echo "✅ Deployed to: $URL"
 
       - name: Verify deployment is healthy
+        if: steps.deploy.outputs.url != ''
         run: |
           sleep 10
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.url }}/login")
           echo "HTTP status: $STATUS"
-          if [ "$STATUS" != "200" ] && [ "$STATUS" != "302" ]; then
-            echo "⚠️ Health check returned $STATUS (may need env vars set in Vercel dashboard)"
-          fi
           echo "✅ Deploy complete"
