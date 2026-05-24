@@ -13,7 +13,7 @@ function getSchedulerModule() {
 }
 function getStatus() {
     const bot = getBotModule()
-    return bot ? bot.getStatus() : 'disconnected'
+    return bot ? bot.getStatus() : null
 }
 function getSocket() {
     const bot = getBotModule()
@@ -42,9 +42,17 @@ router.get('/api/status', async (req, res) => {
         const recentLogs = await db.all('SELECT * FROM message_logs ORDER BY sent_at DESC LIMIT 10')
         const groupJid = await getGroupJid()
         const alias = await db.get('SELECT alias FROM group_aliases WHERE jid = ?', groupJid)
+
+        // Use in-memory status if bot is local, otherwise read from DB
+        let connection = getStatus()
+        if (!connection) {
+            const row = await db.get("SELECT value FROM app_settings WHERE key = 'bot_status'")
+            connection = row?.value || 'disconnected'
+        }
+
         res.json({
             version: appVersion,
-            connection: getStatus(),
+            connection,
             groupJid,
             groupAlias: alias?.alias || null,
             today: getToday(),

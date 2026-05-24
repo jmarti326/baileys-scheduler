@@ -1,12 +1,23 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore } = require('baileys')
 const pino = require('pino')
 const path = require('path')
+const { getDb } = require('./db/index')
 
 const logger = pino({ level: 'silent' })
 const AUTH_PATH = path.join(__dirname, '..', 'data', 'auth_info')
 
 let sock = null
 let connectionStatus = 'disconnected'
+
+async function persistStatus(status) {
+    try {
+        const db = await getDb()
+        await db.run(
+            "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('bot_status', ?)",
+            status
+        )
+    } catch (e) { /* non-critical */ }
+}
 
 async function connectBot() {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_PATH)
@@ -50,6 +61,7 @@ async function connectBot() {
         if (connection === 'open') {
             connectionStatus = 'connected'
             console.log('[BOT] ✅ Connected to WhatsApp')
+            persistStatus('connected')
         }
 
         if (connection === 'close') {
