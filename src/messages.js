@@ -6,15 +6,15 @@ const AUTO_FOOTER = '\n\n_🤖 Mensaje enviado automáticamente por IPR Team Sch
  * Get the schedule for a specific date and day type
  * Returns array of { name, phone, role } for assigned members
  */
-function getAssignedMembers(serviceDate, dayType) {
-    const db = getDb()
-    const rows = db.prepare(`
+async function getAssignedMembers(serviceDate, dayType) {
+    const db = await getDb()
+    const rows = await db.all(`
         SELECT tm.name, tm.phone, se.role
         FROM schedule_entries se
         JOIN team_members tm ON se.member_id = tm.id
         WHERE se.service_date = ? AND se.day_type = ?
         ORDER BY CASE se.role WHEN 'primary' THEN 0 ELSE 1 END, tm.name
-    `).all(serviceDate, dayType)
+    `, serviceDate, dayType)
     return rows
 }
 
@@ -67,10 +67,10 @@ function formatISO(date) {
 /**
  * Build Monday summary message
  */
-function buildMondaySummary(today) {
+async function buildMondaySummary(today) {
     const { thursday, sunday } = getWeekDates(today)
-    const thurTeam = getAssignedMembers(thursday, 'thursday')
-    const sunTeam = getAssignedMembers(sunday, 'sunday')
+    const thurTeam = await getAssignedMembers(thursday, 'thursday')
+    const sunTeam = await getAssignedMembers(sunday, 'sunday')
 
     const mentions = []
     let text = `📋 *Resumen de la semana - Equipo Audiovisual*\n\n`
@@ -107,9 +107,9 @@ function buildMondaySummary(today) {
 /**
  * Build Wednesday reminder for Thursday team
  */
-function buildWednesdayReminder(today) {
+async function buildWednesdayReminder(today) {
     const { thursday } = getWeekDates(today)
-    const team = getAssignedMembers(thursday, 'thursday')
+    const team = await getAssignedMembers(thursday, 'thursday')
     const mentions = []
 
     let text = `👋 *Recordatorio amistoso*\n\n`
@@ -134,9 +134,9 @@ function buildWednesdayReminder(today) {
 /**
  * Build Thursday poll for attendance confirmation
  */
-function buildThursdayPoll(today) {
+async function buildThursdayPoll(today) {
     const { thursday } = getWeekDates(today)
-    const team = getAssignedMembers(thursday, 'thursday')
+    const team = await getAssignedMembers(thursday, 'thursday')
     const primaryTeam = team.filter(m => m.role === 'primary')
     const mentions = primaryTeam.map(m => `${m.phone}@s.whatsapp.net`)
     const names = primaryTeam.map(m => m.name).join(' y ')
@@ -150,12 +150,12 @@ function buildThursdayPoll(today) {
 /**
  * Build Saturday reminder for Sunday team
  */
-function buildSaturdayReminder(today) {
+async function buildSaturdayReminder(today) {
     const parts = today.split('-')
     const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
     date.setDate(date.getDate() + 1)
     const sunday = formatISO(date)
-    const team = getAssignedMembers(sunday, 'sunday')
+    const team = await getAssignedMembers(sunday, 'sunday')
     const mentions = []
 
     let text = `👋 *Recordatorio amistoso*\n\n`
@@ -180,12 +180,12 @@ function buildSaturdayReminder(today) {
 /**
  * Build Saturday poll for Sunday attendance
  */
-function buildSaturdayPoll(today) {
+async function buildSaturdayPoll(today) {
     const parts = today.split('-')
     const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
     date.setDate(date.getDate() + 1)
     const sunday = formatISO(date)
-    const team = getAssignedMembers(sunday, 'sunday')
+    const team = await getAssignedMembers(sunday, 'sunday')
     const mentions = team.map(m => `${m.phone}@s.whatsapp.net`)
     const names = team.map(m => m.role === 'backup' ? `${m.name} (Backup)` : m.name).join(' y ')
 
@@ -204,11 +204,11 @@ function formatDate(dateStr) {
  * Build personal DM messages for each assigned member
  * Returns array of { jid, text, role } for each person
  */
-function buildPersonalNotifications(today, dayType) {
+async function buildPersonalNotifications(today, dayType) {
     const { thursday, sunday } = getWeekDates(today)
     const serviceDate = dayType === 'thursday' ? thursday : sunday
     const dayLabel = dayType === 'thursday' ? 'jueves' : 'domingo'
-    const team = getAssignedMembers(serviceDate, dayType)
+    const team = await getAssignedMembers(serviceDate, dayType)
 
     return team.map(m => {
         const jid = `${m.phone}@s.whatsapp.net`

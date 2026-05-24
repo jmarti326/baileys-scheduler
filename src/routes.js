@@ -196,20 +196,20 @@ router.post('/api/preview', async (req, res) => {
         let result = {}
         switch (type) {
             case 'monday-summary':
-                result = buildMondaySummary(targetDate)
+                result = await buildMondaySummary(targetDate)
                 break
             case 'wednesday-reminder':
-                result = buildWednesdayReminder(targetDate)
+                result = await buildWednesdayReminder(targetDate)
                 break
             case 'thursday-poll':
-                result = buildThursdayPoll(targetDate)
+                result = await buildThursdayPoll(targetDate)
                 result = { text: `📊 POLL: ${result.pollName}\nOptions: ${result.values.join(', ')}`, mentions: result.mentions }
                 break
             case 'saturday-reminder':
-                result = buildSaturdayReminder(targetDate)
+                result = await buildSaturdayReminder(targetDate)
                 break
             case 'saturday-poll':
-                result = buildSaturdayPoll(targetDate)
+                result = await buildSaturdayPoll(targetDate)
                 result = { text: `📊 POLL: ${result.pollName}\nOptions: ${result.values.join(', ')}`, mentions: result.mentions }
                 break
             default:
@@ -246,7 +246,7 @@ router.post('/api/personal/preview', async (req, res) => {
     const targetDate = date || getToday()
     const type = dayType || 'thursday'
     try {
-        const notifications = buildPersonalNotifications(targetDate, type)
+        const notifications = await buildPersonalNotifications(targetDate, type)
         res.json(notifications)
     } catch (err) {
         res.status(500).json({ error: err.message })
@@ -264,7 +264,7 @@ router.post('/api/personal/send', async (req, res) => {
 
     try {
         const { sendTextMessage } = require('./bot')
-        const notifications = buildPersonalNotifications(targetDate, type)
+        const notifications = await buildPersonalNotifications(targetDate, type)
         const toSend = phone ? notifications.filter(n => n.phone === phone) : notifications
         const results = []
 

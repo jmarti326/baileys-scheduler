@@ -48,19 +48,19 @@ async function sendScheduledMessage(type, buildFn, forceSend = false, dateOverri
 
     try {
         if (type === 'thursday-poll') {
-            const { pollName, values, mentions } = buildThursdayPoll(today)
+            const { pollName, values, mentions } = await buildThursdayPoll(today)
             await sendPoll(groupJid, pollName, values, 1, mentions)
             await logMessage(key, type, pollName)
             console.log(`[SCHEDULER] ✅ Sent: ${type}`)
             return { sent: true, key, content: pollName }
         } else if (type === 'saturday-poll') {
-            const { pollName, values, mentions } = buildSaturdayPoll(today)
+            const { pollName, values, mentions } = await buildSaturdayPoll(today)
             await sendPoll(groupJid, pollName, values, 1, mentions)
             await logMessage(key, type, pollName)
             console.log(`[SCHEDULER] ✅ Sent: ${type}`)
             return { sent: true, key, content: pollName }
         } else {
-            const { text, mentions } = buildFn(today)
+            const { text, mentions } = await buildFn(today)
             await sendTextMessage(groupJid, text, mentions)
             await logMessage(key, type, text)
             console.log(`[SCHEDULER] ✅ Sent: ${type}`)
