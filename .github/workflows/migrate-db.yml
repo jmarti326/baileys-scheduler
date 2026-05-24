@@ -1,0 +1,51 @@
+name: Migrate SQLite → Neon
+
+# Manual-only trigger — run this ONCE to copy existing data to Neon.
+# Safe to re-run: all inserts use ON CONFLICT DO NOTHING.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "migrate" to confirm you want to run the migration'
+        required: true
+        default: ''
+
+# Required repository secrets:
+#   DATABASE_URL     — Neon Postgres pooler connection string
+#   SQLITE_DB_B64    — base64-encoded SQLite file
+#                      Generate with: base64 -i data/scheduler.db | tr -d '\n'
+#                      (on macOS: base64 -i data/scheduler.db)
+#                      Then paste the output as the secret value.
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.confirm == 'migrate' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore SQLite database from secret
+        run: |
+          mkdir -p data
+          echo "${{ secrets.SQLITE_DB_B64 }}" | base64 --decode > data/scheduler.db
+          echo "✅ SQLite database restored ($(wc -c < data/scheduler.db) bytes)"
+
+      - name: Run migration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node migrate-sqlite-to-neon.js --sqlite-path ./data/scheduler.db
+
+      - name: Clean up database file
+        if: always()
+        run: rm -f data/scheduler.db

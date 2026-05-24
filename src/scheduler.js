@@ -1,15 +1,15 @@
 const cron = require('node-cron')
-const { getDb } = require('./database')
+const { getDb } = require('./db/index')
 const { sendTextMessage, sendPoll, getStatus } = require('./bot')
 const { buildMondaySummary, buildWednesdayReminder, buildThursdayPoll, buildSaturdayReminder, buildSaturdayPoll } = require('./messages')
 
-function getGroupJid() {
-    const db = getDb()
-    return db.prepare("SELECT value FROM app_settings WHERE key = 'group_jid'").get()?.value
+async function getGroupJid() {
+    const db = await getDb()
+    const row = await db.get("SELECT value FROM app_settings WHERE key = 'group_jid'")
+    return row?.value
 }
 
 function getToday() {
-    // Get current date in AST timezone
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Puerto_Rico' })
 }
 
@@ -17,25 +17,26 @@ function messageKey(type, date) {
     return `${date}:${type}`
 }
 
-function alreadySent(key) {
-    const db = getDb()
-    return !!db.prepare('SELECT 1 FROM message_logs WHERE message_key = ?').get(key)
+async function alreadySent(key) {
+    const db = await getDb()
+    const row = await db.get('SELECT 1 FROM message_logs WHERE message_key = ?', key)
+    return !!row
 }
 
-function logMessage(key, type, content) {
-    const db = getDb()
-    db.prepare('INSERT OR IGNORE INTO message_logs (message_key, message_type, content) VALUES (?, ?, ?)').run(key, type, content)
+async function logMessage(key, type, content) {
+    const db = await getDb()
+    await db.run(
+        'INSERT OR IGNORE INTO message_logs (message_key, message_type, content) VALUES (?, ?, ?)',
+        key, type, content
+    )
 }
 
-/**
- * Send a scheduled message with idempotency check
- */
 async function sendScheduledMessage(type, buildFn, forceSend = false, dateOverride = null, groupJidOverride = null) {
     const today = dateOverride || getToday()
     const key = messageKey(type, today)
-    const groupJid = groupJidOverride || getGroupJid()
+    const groupJid = groupJidOverride || await getGroupJid()
 
-    if (!forceSend && alreadySent(key)) {
+    if (!forceSend && await alreadySent(key)) {
         console.log(`[SCHEDULER] ⏭️ Already sent: ${key}`)
         return { skipped: true, key }
     }
@@ -49,19 +50,19 @@ async function sendScheduledMessage(type, buildFn, forceSend = false, dateOverri
         if (type === 'thursday-poll') {
             const { pollName, values, mentions } = buildThursdayPoll(today)
             await sendPoll(groupJid, pollName, values, 1, mentions)
-            logMessage(key, type, pollName)
+            await logMessage(key, type, pollName)
             console.log(`[SCHEDULER] ✅ Sent: ${type}`)
             return { sent: true, key, content: pollName }
         } else if (type === 'saturday-poll') {
             const { pollName, values, mentions } = buildSaturdayPoll(today)
             await sendPoll(groupJid, pollName, values, 1, mentions)
-            logMessage(key, type, pollName)
+            await logMessage(key, type, pollName)
             console.log(`[SCHEDULER] ✅ Sent: ${type}`)
             return { sent: true, key, content: pollName }
         } else {
             const { text, mentions } = buildFn(today)
             await sendTextMessage(groupJid, text, mentions)
-            logMessage(key, type, text)
+            await logMessage(key, type, text)
             console.log(`[SCHEDULER] ✅ Sent: ${type}`)
             return { sent: true, key, content: text }
         }
@@ -72,31 +73,27 @@ async function sendScheduledMessage(type, buildFn, forceSend = false, dateOverri
 }
 
 function startScheduler() {
-    // Monday 9:05 AM AST - Weekly summary
     cron.schedule('5 9 * * 1', () => {
         console.log('[CRON] Monday summary triggered')
         sendScheduledMessage('monday-summary', buildMondaySummary)
     }, { timezone: 'America/Puerto_Rico' })
 
-    // Wednesday 9:05 AM AST - Thursday reminder
     cron.schedule('5 9 * * 3', () => {
         console.log('[CRON] Wednesday reminder triggered')
         sendScheduledMessage('wednesday-reminder', buildWednesdayReminder)
     }, { timezone: 'America/Puerto_Rico' })
 
-    // Thursday 9:05 AM AST - Thursday poll
     cron.schedule('5 9 * * 4', () => {
         console.log('[CRON] Thursday poll triggered')
         sendScheduledMessage('thursday-poll', null)
     }, { timezone: 'America/Puerto_Rico' })
 
-    // Saturday 9:05 AM AST - Sunday reminder + poll
     cron.schedule('5 9 * * 6', () => {
         console.log('[CRON] Saturday reminder + poll triggered')
         sendScheduledMessage('saturday-reminder', buildSaturdayReminder)
         setTimeout(() => {
             sendScheduledMessage('saturday-poll', null)
-        }, 3000) // small delay between messages
+        }, 3000)
     }, { timezone: 'America/Puerto_Rico' })
 
     console.log('[SCHEDULER] ✅ Cron jobs started (Mon/Wed/Thu/Sat at 9:05 AM AST)')

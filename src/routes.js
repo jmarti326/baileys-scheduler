@@ -1,5 +1,5 @@
 const express = require('express')
-const { getDb } = require('./database')
+const { getDb } = require('./db/index')
 const { getStatus, getSocket } = require('./bot')
 const { sendScheduledMessage, getToday, getGroupJid } = require('./scheduler')
 const { buildMondaySummary, buildWednesdayReminder, buildThursdayPoll, buildSaturdayReminder, buildSaturdayPoll, buildPersonalNotifications } = require('./messages')
@@ -10,54 +10,66 @@ const router = express.Router()
 const appVersion = require('../package.json').version
 
 // --- API: Dashboard ---
-router.get('/api/status', (req, res) => {
-    const db = getDb()
-    const recentLogs = db.prepare('SELECT * FROM message_logs ORDER BY sent_at DESC LIMIT 10').all()
-    const groupJid = getGroupJid()
-    const alias = db.prepare('SELECT alias FROM group_aliases WHERE jid = ?').get(groupJid)
-    res.json({
-        version: appVersion,
-        connection: getStatus(),
-        groupJid,
-        groupAlias: alias?.alias || null,
-        today: getToday(),
-        recentLogs
-    })
+router.get('/api/status', async (req, res) => {
+    try {
+        const db = await getDb()
+        const recentLogs = await db.all('SELECT * FROM message_logs ORDER BY sent_at DESC LIMIT 10')
+        const groupJid = await getGroupJid()
+        const alias = await db.get('SELECT alias FROM group_aliases WHERE jid = ?', groupJid)
+        res.json({
+            version: appVersion,
+            connection: getStatus(),
+            groupJid,
+            groupAlias: alias?.alias || null,
+            today: getToday(),
+            recentLogs,
+        })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
 // --- API: Team Members ---
-router.get('/api/team', (req, res) => {
-    const db = getDb()
-    const members = db.prepare('SELECT * FROM team_members ORDER BY name').all()
-    res.json(members)
+router.get('/api/team', async (req, res) => {
+    try {
+        const db = await getDb()
+        const members = await db.all('SELECT * FROM team_members ORDER BY name')
+        res.json(members)
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
-router.post('/api/team', (req, res) => {
-    const db = getDb()
-    const { name, phone } = req.body
-    if (!name || !phone) return res.status(400).json({ error: 'Name and phone required' })
-    const cleanPhone = phone.replace(/[^0-9]/g, '')
+router.post('/api/team', async (req, res) => {
     try {
-        db.prepare('INSERT INTO team_members (name, phone) VALUES (?, ?)').run(name, cleanPhone)
+        const db = await getDb()
+        const { name, phone } = req.body
+        if (!name || !phone) return res.status(400).json({ error: 'Name and phone required' })
+        const cleanPhone = phone.replace(/[^0-9]/g, '')
+        await db.run('INSERT OR IGNORE INTO team_members (name, phone) VALUES (?, ?)', name, cleanPhone)
         res.json({ success: true })
     } catch (err) {
         res.status(400).json({ error: err.message })
     }
 })
 
-router.delete('/api/team/:id', (req, res) => {
-    const db = getDb()
-    db.prepare('DELETE FROM team_members WHERE id = ?').run(req.params.id)
-    res.json({ success: true })
+router.delete('/api/team/:id', async (req, res) => {
+    try {
+        const db = await getDb()
+        await db.run('DELETE FROM team_members WHERE id = ?', req.params.id)
+        res.json({ success: true })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
-router.put('/api/team/:id', (req, res) => {
-    const db = getDb()
-    const { name, phone } = req.body
-    if (!name || !phone) return res.status(400).json({ error: 'Name and phone required' })
-    const cleanPhone = phone.replace(/[^0-9]/g, '')
+router.put('/api/team/:id', async (req, res) => {
     try {
-        db.prepare('UPDATE team_members SET name = ?, phone = ? WHERE id = ?').run(name, cleanPhone, req.params.id)
+        const db = await getDb()
+        const { name, phone } = req.body
+        if (!name || !phone) return res.status(400).json({ error: 'Name and phone required' })
+        const cleanPhone = phone.replace(/[^0-9]/g, '')
+        await db.run('UPDATE team_members SET name = ?, phone = ? WHERE id = ?', name, cleanPhone, req.params.id)
         res.json({ success: true })
     } catch (err) {
         res.status(400).json({ error: err.message })
@@ -65,71 +77,84 @@ router.put('/api/team/:id', (req, res) => {
 })
 
 // --- API: Schedule ---
-router.get('/api/schedule', (req, res) => {
-    const db = getDb()
-    const entries = db.prepare(`
-        SELECT se.id, se.service_date, se.day_type, se.role, tm.name, tm.phone, tm.id as member_id
-        FROM schedule_entries se
-        JOIN team_members tm ON se.member_id = tm.id
-        ORDER BY se.service_date ASC, se.day_type, CASE se.role WHEN 'primary' THEN 0 ELSE 1 END
-    `).all()
-    res.json(entries)
+router.get('/api/schedule', async (req, res) => {
+    try {
+        const db = await getDb()
+        const entries = await db.all(`
+            SELECT se.id, se.service_date, se.day_type, se.role, tm.name, tm.phone, tm.id as member_id
+            FROM schedule_entries se
+            JOIN team_members tm ON se.member_id = tm.id
+            ORDER BY se.service_date ASC, se.day_type, CASE se.role WHEN 'primary' THEN 0 ELSE 1 END
+        `)
+        res.json(entries)
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
-router.post('/api/schedule', (req, res) => {
-    const db = getDb()
-    const { service_date, day_type, member_id, role } = req.body
-    if (!service_date || !day_type || !member_id) {
-        return res.status(400).json({ error: 'service_date, day_type, and member_id required' })
-    }
-    const memberRole = role || 'primary'
+router.post('/api/schedule', async (req, res) => {
     try {
-        db.prepare('INSERT INTO schedule_entries (service_date, day_type, member_id, role) VALUES (?, ?, ?, ?)')
-            .run(service_date, day_type, member_id, memberRole)
+        const db = await getDb()
+        const { service_date, day_type, member_id, role } = req.body
+        if (!service_date || !day_type || !member_id) {
+            return res.status(400).json({ error: 'service_date, day_type, and member_id required' })
+        }
+        const memberRole = role || 'primary'
+        await db.run(
+            'INSERT OR IGNORE INTO schedule_entries (service_date, day_type, member_id, role) VALUES (?, ?, ?, ?)',
+            service_date, day_type, member_id, memberRole
+        )
         res.json({ success: true })
     } catch (err) {
         res.status(400).json({ error: err.message })
     }
 })
 
-router.delete('/api/schedule/:id', (req, res) => {
-    const db = getDb()
-    db.prepare('DELETE FROM schedule_entries WHERE id = ?').run(req.params.id)
-    res.json({ success: true })
+router.delete('/api/schedule/:id', async (req, res) => {
+    try {
+        const db = await getDb()
+        await db.run('DELETE FROM schedule_entries WHERE id = ?', req.params.id)
+        res.json({ success: true })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
 // --- API: Calendar (monthly view) ---
-router.get('/api/calendar/:year/:month', (req, res) => {
-    const db = getDb()
-    const year = parseInt(req.params.year)
-    const month = parseInt(req.params.month) // 1-12
-    if (!year || !month || month < 1 || month > 12) {
-        return res.status(400).json({ error: 'Invalid year/month' })
+router.get('/api/calendar/:year/:month', async (req, res) => {
+    try {
+        const db = await getDb()
+        const year = parseInt(req.params.year)
+        const month = parseInt(req.params.month)
+        if (!year || !month || month < 1 || month > 12) {
+            return res.status(400).json({ error: 'Invalid year/month' })
+        }
+        const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+        const lastDay = new Date(year, month, 0).getDate()
+        const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+        const entries = await db.all(`
+            SELECT se.id, se.service_date, se.day_type, se.role, tm.name, tm.id as member_id
+            FROM schedule_entries se
+            JOIN team_members tm ON se.member_id = tm.id
+            WHERE se.service_date >= ? AND se.service_date <= ?
+            ORDER BY se.service_date ASC, CASE se.role WHEN 'primary' THEN 0 ELSE 1 END, tm.name
+        `, startDate, endDate)
+
+        const byDate = {}
+        entries.forEach(e => {
+            if (!byDate[e.service_date]) byDate[e.service_date] = []
+            byDate[e.service_date].push(e)
+        })
+
+        res.json({ year, month, lastDay, entries: byDate })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
     }
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-    const lastDay = new Date(year, month, 0).getDate()
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-
-    const entries = db.prepare(`
-        SELECT se.id, se.service_date, se.day_type, se.role, tm.name, tm.id as member_id
-        FROM schedule_entries se
-        JOIN team_members tm ON se.member_id = tm.id
-        WHERE se.service_date >= ? AND se.service_date <= ?
-        ORDER BY se.service_date ASC, CASE se.role WHEN 'primary' THEN 0 ELSE 1 END, tm.name
-    `).all(startDate, endDate)
-
-    // Group by date
-    const byDate = {}
-    entries.forEach(e => {
-        if (!byDate[e.service_date]) byDate[e.service_date] = []
-        byDate[e.service_date].push(e)
-    })
-
-    res.json({ year, month, lastDay, entries: byDate })
 })
 
 // --- API: Manual Send / Preview ---
-router.post('/api/preview', (req, res) => {
+router.post('/api/preview', async (req, res) => {
     const { type, date } = req.body
     const targetDate = date || getToday()
 
@@ -170,7 +195,7 @@ router.post('/api/send', async (req, res) => {
         'wednesday-reminder': buildWednesdayReminder,
         'thursday-poll': null,
         'saturday-reminder': buildSaturdayReminder,
-        'saturday-poll': null
+        'saturday-poll': null,
     }
 
     if (!(type in buildFns)) {
@@ -182,7 +207,7 @@ router.post('/api/send', async (req, res) => {
 })
 
 // --- API: Personal DMs ---
-router.post('/api/personal/preview', (req, res) => {
+router.post('/api/personal/preview', async (req, res) => {
     const { date, dayType } = req.body
     const targetDate = date || getToday()
     const type = dayType || 'thursday'
@@ -221,19 +246,27 @@ router.post('/api/personal/send', async (req, res) => {
 })
 
 // --- API: Settings ---
-router.get('/api/settings', (req, res) => {
-    const db = getDb()
-    const rows = db.prepare('SELECT * FROM app_settings').all()
-    const settings = {}
-    rows.forEach(r => settings[r.key] = r.value)
-    res.json(settings)
+router.get('/api/settings', async (req, res) => {
+    try {
+        const db = await getDb()
+        const rows = await db.all('SELECT * FROM app_settings')
+        const settings = {}
+        rows.forEach(r => settings[r.key] = r.value)
+        res.json(settings)
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
-router.post('/api/settings', (req, res) => {
-    const db = getDb()
-    const { key, value } = req.body
-    db.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)').run(key, value)
-    res.json({ success: true })
+router.post('/api/settings', async (req, res) => {
+    try {
+        const db = await getDb()
+        const { key, value } = req.body
+        await db.run('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)', key, value)
+        res.json({ success: true })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
 // --- API: Groups (fetch from WhatsApp) ---
@@ -243,16 +276,17 @@ router.get('/api/groups', async (req, res) => {
         return res.status(503).json({ error: 'Bot not connected' })
     }
     try {
-        const db = getDb()
+        const db = await getDb()
+        const aliasRows = await db.all('SELECT jid, alias FROM group_aliases')
         const aliases = {}
-        db.prepare('SELECT jid, alias FROM group_aliases').all().forEach(r => aliases[r.jid] = r.alias)
+        aliasRows.forEach(r => aliases[r.jid] = r.alias)
 
         const groups = await sock.groupFetchAllParticipating()
         const list = Object.values(groups).map(g => ({
             jid: g.id,
             name: g.subject,
             alias: aliases[g.id] || null,
-            participants: g.participants?.length || 0
+            participants: g.participants?.length || 0,
         })).sort((a, b) => (a.alias || a.name).localeCompare(b.alias || b.name))
         res.json(list)
     } catch (err) {
@@ -260,60 +294,80 @@ router.get('/api/groups', async (req, res) => {
     }
 })
 
-router.post('/api/groups/alias', (req, res) => {
-    const db = getDb()
-    const { jid, alias } = req.body
-    if (!jid || !alias) return res.status(400).json({ error: 'jid and alias required' })
-    db.prepare('INSERT OR REPLACE INTO group_aliases (jid, alias) VALUES (?, ?)').run(jid, alias.trim())
-    res.json({ success: true })
+router.post('/api/groups/alias', async (req, res) => {
+    try {
+        const db = await getDb()
+        const { jid, alias } = req.body
+        if (!jid || !alias) return res.status(400).json({ error: 'jid and alias required' })
+        await db.run('INSERT OR REPLACE INTO group_aliases (jid, alias) VALUES (?, ?)', jid, alias.trim())
+        res.json({ success: true })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
 // --- API: Logs ---
-router.get('/api/logs', (req, res) => {
-    const db = getDb()
-    const logs = db.prepare('SELECT * FROM message_logs ORDER BY sent_at DESC LIMIT 50').all()
-    res.json(logs)
+router.get('/api/logs', async (req, res) => {
+    try {
+        const db = await getDb()
+        const logs = await db.all('SELECT * FROM message_logs ORDER BY sent_at DESC LIMIT 50')
+        res.json(logs)
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
 // --- API: Users (admin only) ---
-router.get('/api/users', (req, res) => {
+router.get('/api/users', async (req, res) => {
     if (!req.session.isAdmin) return res.status(403).json({ error: 'Admin only' })
-    res.json(getUsers())
+    try {
+        res.json(await getUsers())
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
-router.post('/api/users', (req, res) => {
+router.post('/api/users', async (req, res) => {
     if (!req.session.isAdmin) return res.status(403).json({ error: 'Admin only' })
     const { username, password, isAdmin } = req.body
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' })
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' })
     try {
-        createUser(username, password, isAdmin ? 1 : 0)
+        await createUser(username, password, isAdmin ? 1 : 0)
         res.json({ success: true })
     } catch (err) {
         res.status(400).json({ error: err.message })
     }
 })
 
-router.delete('/api/users/:id', (req, res) => {
+router.delete('/api/users/:id', async (req, res) => {
     if (!req.session.isAdmin) return res.status(403).json({ error: 'Admin only' })
     const id = parseInt(req.params.id)
     if (id === req.session.userId) return res.status(400).json({ error: 'Cannot delete yourself' })
-    deleteUser(id)
-    res.json({ success: true })
+    try {
+        await deleteUser(id)
+        res.json({ success: true })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
 })
 
-router.post('/api/users/change-password', (req, res) => {
+router.post('/api/users/change-password', async (req, res) => {
     const { currentPassword, newPassword } = req.body
     if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' })
     if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' })
 
-    const db = getDb()
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId)
-    if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
-        return res.status(401).json({ error: 'Current password is incorrect' })
+    try {
+        const db = await getDb()
+        const user = await db.get('SELECT * FROM users WHERE id = ?', req.session.userId)
+        if (!await bcrypt.compare(currentPassword, user.password_hash)) {
+            return res.status(401).json({ error: 'Current password is incorrect' })
+        }
+        await changePassword(req.session.userId, newPassword)
+        res.json({ success: true })
+    } catch (err) {
+        res.status(500).json({ error: err.message })
     }
-    changePassword(req.session.userId, newPassword)
-    res.json({ success: true })
 })
 
 // --- API: Current user ---

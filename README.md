@@ -57,6 +57,84 @@ On first run, update the **Group JID** in Settings (or directly in the database)
 |----------|---------|-------------|
 | `PORT` | `3000` | Web UI port |
 | `TZ` | `America/Puerto_Rico` | Container timezone |
+| `SESSION_SECRET` | *(required)* | Random string for signing sessions |
+| `ADMIN_USER` / `ADMIN_PASS` | — | Seed initial admin on first boot |
+| `DATABASE_URL` | — | Postgres connection string (Neon). Omit to use SQLite |
+| `APP_ROLE` | `all` | `all` · `api` (Vercel) · `worker` (Azure Container Apps) |
+
+## Deployment
+
+GitHub Actions handle the full deploy pipeline automatically on every push to `master`.
+
+### Required GitHub Secrets
+
+Go to **Settings → Secrets and variables → Actions** in your repo and add:
+
+| Secret | Used by | How to get it |
+|--------|---------|---------------|
+| `AZURE_CREDENTIALS` | Worker deploy | `az ad sp create-for-rbac --name "team-scheduler-gha" --role contributor --scopes /subscriptions/<sub-id>/resourceGroups/<rg> --sdk-auth` |
+| `AZURE_RESOURCE_GROUP` | Worker deploy | Name of your Azure resource group (e.g. `rg-team-scheduler`) |
+| `AZURE_CONTAINER_APP` | Worker deploy | Container App name from Bicep output (e.g. `team-scheduler-worker`) |
+| `DATABASE_URL` | Worker deploy + Migration | Neon pooler connection string |
+| `SESSION_SECRET` | Worker deploy | `openssl rand -hex 32` |
+| `VERCEL_TOKEN` | Vercel deploy | [vercel.com/account/tokens](https://vercel.com/account/tokens) |
+| `VERCEL_ORG_ID` | Vercel deploy | Vercel dashboard → Settings → General → "Your ID" |
+| `VERCEL_PROJECT_ID` | Vercel deploy | `prj_ImS8xzjL714BVTPq5mTDf4w0eQGq` (visible in project settings) |
+| `SQLITE_DB_B64` | Migration only | `base64 -i data/scheduler.db` — paste the output as the secret |
+
+### Vercel Environment Variables
+
+In **Vercel → Project Settings → Environment Variables**, add:
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | Neon pooler connection string |
+| `SESSION_SECRET` | Same random secret as above |
+
+`APP_ROLE=api` is already baked into `vercel.json`.
+
+### Workflows
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `Build, Push, and Deploy` | Push to `master` | Builds Docker image → GHCR, then updates Azure Container App |
+| `Deploy to Vercel` | Push to `master` | Deploys API to Vercel + health-checks `/login` |
+| `Migrate SQLite → Neon` | Manual only | Restores SQLite from secret, copies all data to Neon |
+
+### First-time setup order
+
+1. **Provision Azure infra** (one-time):
+   ```bash
+   az group create --name rg-team-scheduler --location eastus
+   az deployment group create \
+     --resource-group rg-team-scheduler \
+     --template-file infra/container-app.bicep \
+     --parameters containerImage=ghcr.io/jmarti326/baileys-scheduler:latest \
+                  databaseUrl="postgresql://..." \
+                  sessionSecret="..."
+   ```
+2. **Add all GitHub secrets** (table above).
+3. **Add Vercel env vars** in the Vercel dashboard.
+4. **Run the migration** — trigger `Migrate SQLite → Neon` workflow manually (type `migrate` in the confirm field).
+5. **Push to `master`** — both deploy workflows run automatically.
+
+### Vercel (API + Web UI)
+
+The `deploy-vercel.yml` workflow deploys the Express app to Vercel with `APP_ROLE=api`. The web UI is fully served from Vercel; the bot/scheduler runs separately on Azure.
+
+### Azure Container Apps (WhatsApp worker)
+
+The `docker-publish.yml` workflow builds and pushes the Docker image to GHCR, then updates the Container App with the new image. The worker runs with `APP_ROLE=worker` and `min replicas=1` so the WhatsApp connection stays live.
+
+### SQLite → Neon migration (manual)
+
+```bash
+# Generate the secret value locally
+base64 -i data/scheduler.db   # macOS
+# base64 data/scheduler.db    # Linux
+```
+
+Paste the output as the `SQLITE_DB_B64` secret, then trigger the `Migrate SQLite → Neon` workflow from the Actions tab.
 
 ## Usage
 
@@ -70,20 +148,30 @@ On first run, update the **Group JID** in Settings (or directly in the database)
 ```
 baileys-scheduler/
 ├── src/
-│   ├── index.js          # Entry point (Express + cron + bot)
+│   ├── index.js          # Entry point — respects APP_ROLE env var
 │   ├── bot.js            # Baileys connection manager
-│   ├── database.js       # SQLite schema & initialization
+│   ├── database.js       # Shim → src/db/index.js
+│   ├── db/
+│   │   ├── index.js      # Adapter selector (SQLite or Postgres)
+│   │   ├── sqlite.js     # SQLite adapter (local / Docker)
+│   │   └── postgres.js   # Postgres adapter (Neon)
 │   ├── messages.js       # Message builders (summary, reminders, polls)
-│   ├── routes.js         # Express API routes
-│   └── scheduler.js      # Cron job definitions
+│   ├── routes.js         # Express API routes (all async)
+│   ├── auth.js           # Auth helpers (all async)
+│   └── scheduler.js      # Cron job definitions (all async)
 ├── views/
 │   └── index.html        # Web UI (Tailwind CSS)
 ├── data/                  # Runtime data (gitignored)
 │   ├── auth_info/        # WhatsApp session credentials
-│   └── scheduler.db      # SQLite database
+│   └── scheduler.db      # SQLite database (local only)
+├── infra/
+│   ├── main.bicep        # Azure VM (legacy / fallback)
+│   └── container-app.bicep  # Azure Container Apps worker (Phase 4)
 ├── Dockerfile
 ├── docker-compose.yml
-└── migrate.js            # DB migration helper
+├── vercel.json           # Vercel deployment config (APP_ROLE=api)
+├── migrate.js            # SQLite schema migration helper
+└── migrate-sqlite-to-neon.js  # One-shot SQLite → Neon data migration
 ```
 
 ## Disclaimer

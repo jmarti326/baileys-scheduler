@@ -1,4 +1,4 @@
-name: Build and Push to GHCR
+name: Build, Push, and Deploy
 
 on:
   push:
@@ -10,11 +10,15 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # ── 1. Build Docker image and push to GHCR ──────────────────────────────────
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout repository
@@ -54,3 +58,59 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Export image ref for downstream jobs
+        id: image
+        run: |
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
+
+  # ── 2. Deploy worker to Azure Container Apps ─────────────────────────────────
+  # Requires these repository secrets:
+  #   AZURE_CREDENTIALS       — service principal JSON (az ad sp create-for-rbac)
+  #   AZURE_RESOURCE_GROUP    — resource group where the Container App lives
+  #   AZURE_CONTAINER_APP     — Container App name (default: team-scheduler-worker)
+  #   DATABASE_URL            — Neon Postgres connection string
+  #   SESSION_SECRET          — Express session secret
+  deploy-worker:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Update Container App image
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          containerAppName: ${{ secrets.AZURE_CONTAINER_APP }}
+          imageToDeploy: ${{ needs.build-and-push.outputs.image }}
+
+      - name: Set Container App secrets / env vars
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az containerapp secret set \
+              --name "${{ secrets.AZURE_CONTAINER_APP }}" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --secrets \
+                "database-url=${{ secrets.DATABASE_URL }}" \
+                "session-secret=${{ secrets.SESSION_SECRET }}"
+
+      - name: Verify deployment
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            STATE=$(az containerapp show \
+              --name "${{ secrets.AZURE_CONTAINER_APP }}" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --query "properties.runningStatus" -o tsv)
+            echo "Container App state: $STATE"
+            if [ "$STATE" != "Running" ]; then
+              echo "⚠️  Container App is not in Running state"
+              exit 1
+            fi
+
