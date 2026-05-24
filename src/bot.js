@@ -19,6 +19,22 @@ async function persistStatus(status) {
     } catch (e) { /* non-critical */ }
 }
 
+async function syncGroupsToDb() {
+    try {
+        if (!sock) return
+        const groups = await sock.groupFetchAllParticipating()
+        const db = await getDb()
+        const list = Object.values(groups).map(g => ({ jid: g.id, name: g.subject }))
+        await db.run(
+            "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('groups_cache', ?)",
+            JSON.stringify(list)
+        )
+        console.log(`[BOT] 📋 Synced ${list.length} groups to DB`)
+    } catch (e) {
+        console.error('[BOT] Failed to sync groups:', e.message)
+    }
+}
+
 async function connectBot() {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_PATH)
     const { version } = await fetchLatestBaileysVersion()
@@ -62,6 +78,8 @@ async function connectBot() {
             connectionStatus = 'connected'
             console.log('[BOT] ✅ Connected to WhatsApp')
             persistStatus('connected')
+            // Sync group list to DB for the API layer
+            setTimeout(() => syncGroupsToDb(), 5000)
         }
 
         if (connection === 'close') {

@@ -303,24 +303,37 @@ router.post('/api/settings', async (req, res) => {
     }
 })
 
-// --- API: Groups (fetch from WhatsApp) ---
+// --- API: Groups (fetch from WhatsApp or DB cache) ---
 router.get('/api/groups', async (req, res) => {
-    const sock = getSocket()
-    if (!sock || getStatus() !== 'connected') {
-        return res.status(503).json({ error: 'Bot not connected' })
-    }
     try {
         const db = await getDb()
         const aliasRows = await db.all('SELECT jid, alias FROM group_aliases')
         const aliases = {}
         aliasRows.forEach(r => aliases[r.jid] = r.alias)
 
-        const groups = await sock.groupFetchAllParticipating()
-        const list = Object.values(groups).map(g => ({
-            jid: g.id,
-            name: g.subject,
-            alias: aliases[g.id] || null,
-            participants: g.participants?.length || 0,
+        // Try live fetch from socket if available
+        const sock = getSocket()
+        if (sock) {
+            const groups = await sock.groupFetchAllParticipating()
+            const list = Object.values(groups).map(g => ({
+                jid: g.id,
+                name: g.subject,
+                alias: aliases[g.id] || null,
+                participants: g.participants?.length || 0,
+            })).sort((a, b) => (a.alias || a.name).localeCompare(b.alias || b.name))
+            return res.json(list)
+        }
+
+        // Fall back to cached groups from DB
+        const cache = await db.get("SELECT value FROM app_settings WHERE key = 'groups_cache'")
+        if (!cache?.value) {
+            return res.status(503).json({ error: 'Bot not connected' })
+        }
+        const cached = JSON.parse(cache.value)
+        const list = cached.map(g => ({
+            ...g,
+            alias: aliases[g.jid] || null,
+            participants: 0,
         })).sort((a, b) => (a.alias || a.name).localeCompare(b.alias || b.name))
         res.json(list)
     } catch (err) {
