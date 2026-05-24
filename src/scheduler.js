@@ -96,7 +96,42 @@ function startScheduler() {
         }, 3000)
     }, { timezone: 'America/Puerto_Rico' })
 
+    // Poll for queued sends from the API every 10 seconds
+    setInterval(processPendingSends, 10000)
+
     console.log('[SCHEDULER] ✅ Cron jobs started (Mon/Wed/Thu/Sat at 9:05 AM AST)')
+}
+
+async function processPendingSends() {
+    try {
+        const db = await getDb()
+        const pending = await db.all(
+            "SELECT * FROM pending_sends WHERE status = 'pending' ORDER BY created_at ASC LIMIT 5"
+        )
+        if (!pending.length) return
+
+        const buildFns = {
+            'monday-summary': buildMondaySummary,
+            'wednesday-reminder': buildWednesdayReminder,
+            'thursday-poll': null,
+            'saturday-reminder': buildSaturdayReminder,
+            'saturday-poll': null,
+        }
+
+        for (const item of pending) {
+            const result = await sendScheduledMessage(
+                item.type, buildFns[item.type],
+                item.force_send, item.date, item.group_jid
+            )
+            await db.run(
+                "UPDATE pending_sends SET status = 'done', result = ?, processed_at = datetime('now') WHERE id = ?",
+                JSON.stringify(result), item.id
+            )
+            console.log(`[QUEUE] Processed: ${item.type} → ${result.sent ? 'sent' : result.error || 'skipped'}`)
+        }
+    } catch (e) {
+        // Non-critical — will retry next interval
+    }
 }
 
 module.exports = { startScheduler, sendScheduledMessage, getToday, getGroupJid }

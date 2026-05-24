@@ -73,6 +73,18 @@ async function createDb() {
                     is_admin INTEGER DEFAULT 0,
                     created_at TEXT DEFAULT (datetime('now'))
                 );
+
+                CREATE TABLE IF NOT EXISTS pending_sends (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    group_jid TEXT,
+                    force_send INTEGER DEFAULT 0,
+                    status TEXT DEFAULT 'pending',
+                    result TEXT,
+                    created_at TEXT DEFAULT (datetime('now')),
+                    processed_at TEXT
+                );
             `)
 
             const insert = raw.prepare('INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)')

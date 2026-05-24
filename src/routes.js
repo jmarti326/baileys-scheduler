@@ -224,20 +224,33 @@ router.post('/api/preview', async (req, res) => {
 router.post('/api/send', async (req, res) => {
     const { type, force, date, groupJid } = req.body
 
-    const buildFns = {
-        'monday-summary': buildMondaySummary,
-        'wednesday-reminder': buildWednesdayReminder,
-        'thursday-poll': null,
-        'saturday-reminder': buildSaturdayReminder,
-        'saturday-poll': null,
-    }
-
-    if (!(type in buildFns)) {
+    const validTypes = ['monday-summary', 'wednesday-reminder', 'thursday-poll', 'saturday-reminder', 'saturday-poll']
+    if (!validTypes.includes(type)) {
         return res.status(400).json({ error: 'Invalid message type' })
     }
 
-    const result = await sendScheduledMessage(type, buildFns[type], force === true, date, groupJid)
-    res.json(result)
+    // If bot is local (worker/all mode), send directly
+    const sched = getSchedulerModule()
+    if (sched) {
+        const buildFns = {
+            'monday-summary': buildMondaySummary,
+            'wednesday-reminder': buildWednesdayReminder,
+            'thursday-poll': null,
+            'saturday-reminder': buildSaturdayReminder,
+            'saturday-poll': null,
+        }
+        const result = await sched.sendScheduledMessage(type, buildFns[type], force === true, date, groupJid)
+        return res.json(result)
+    }
+
+    // Otherwise queue it for the worker to pick up
+    const db = await getDb()
+    const targetDate = date || getToday()
+    await db.run(
+        "INSERT INTO pending_sends (type, date, group_jid, force_send) VALUES (?, ?, ?, ?)",
+        type, targetDate, groupJid || null, force ? 1 : 0
+    )
+    res.json({ queued: true, type, date: targetDate, message: 'Message queued — worker will send it shortly' })
 })
 
 // --- API: Personal DMs ---

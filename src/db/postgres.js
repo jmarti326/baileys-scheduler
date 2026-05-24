@@ -134,6 +134,18 @@ async function createDb() {
                 );
 
                 CREATE INDEX IF NOT EXISTS sessions_expire_idx ON sessions (expire);
+
+                CREATE TABLE IF NOT EXISTS pending_sends (
+                    id SERIAL PRIMARY KEY,
+                    type TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    group_jid TEXT,
+                    force_send BOOLEAN DEFAULT false,
+                    status TEXT DEFAULT 'pending',
+                    result TEXT,
+                    created_at TIMESTAMPTZ DEFAULT now(),
+                    processed_at TIMESTAMPTZ
+                );
             `)
 
             const defaults = [
