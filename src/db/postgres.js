@@ -32,7 +32,14 @@ function pgSql(sql) {
         .replace(/\?/g, () => `$${++i}`)
 
     if (/^INSERT OR IGNORE/i.test(sql.trim())) return base + ' ON CONFLICT DO NOTHING'
-    if (/^INSERT OR REPLACE/i.test(sql.trim())) return base + ' ON CONFLICT DO NOTHING'
+    if (/^INSERT OR REPLACE/i.test(sql.trim())) {
+        // Detect target table for proper upsert
+        const tableMatch = base.match(/^INSERT INTO\s+(\w+)/i)
+        const table = tableMatch ? tableMatch[1] : ''
+        if (table === 'app_settings') return base + ' ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value'
+        if (table === 'group_aliases') return base + ' ON CONFLICT (jid) DO UPDATE SET alias = EXCLUDED.alias'
+        return base + ' ON CONFLICT DO NOTHING'
+    }
     return base
 }
 

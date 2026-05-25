@@ -4,6 +4,7 @@
   "description": "WhatsApp bot for automating team scheduling reminders and attendance polls",
   "main": "index.js",
   "scripts": {
+    "start": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

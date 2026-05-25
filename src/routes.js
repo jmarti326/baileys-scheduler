@@ -35,6 +35,17 @@ function getGroupJid() {
 const router = express.Router()
 const appVersion = require('../package.json').version
 
+// --- Health check (no auth required) ---
+router.get('/health', async (req, res) => {
+    try {
+        const db = await getDb()
+        await db.get("SELECT 1")
+        res.json({ status: 'ok', version: appVersion })
+    } catch (err) {
+        res.status(503).json({ status: 'error', error: err.message })
+    }
+})
+
 // --- API: Dashboard ---
 router.get('/api/status', async (req, res) => {
     try {
