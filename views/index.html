@@ -10,117 +10,186 @@
             theme: { extend: { colors: { primary: '#6366f1' } } }
         }
     </script>
+    <style>
+        /* Larger base font, better readability for older users */
+        body { font-size: 18px; line-height: 1.6; }
+        
+        /* Larger click targets */
+        button, select, input { min-height: 44px; font-size: 16px; }
+        
+        /* Better focus visibility */
+        button:focus, select:focus, input:focus {
+            outline: 3px solid #818cf8;
+            outline-offset: 2px;
+        }
+        
+        /* Tab buttons need to be bigger */
+        .tab-btn { min-height: 48px; font-size: 16px !important; }
+        
+        /* Smooth transitions for less jarring UI changes */
+        .tab-content { transition: opacity 0.2s ease; }
+        
+        /* Toast notification styles */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 16px 28px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            z-index: 9999;
+            animation: slideUp 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .toast-success { background: #065f46; color: #6ee7b7; border: 2px solid #10b981; }
+        .toast-error { background: #7f1d1d; color: #fca5a5; border: 2px solid #ef4444; }
+        .toast-info { background: #1e3a5f; color: #93c5fd; border: 2px solid #3b82f6; }
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
-    <div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto px-4 py-6">
         <!-- Header -->
-        <div class="flex items-center justify-between mb-8">
-            <h1 class="text-3xl font-bold text-white">⛪ IPR Team Scheduler Agent <span id="app-version" class="text-sm font-normal text-gray-500"></span></h1>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
+            <h1 class="text-2xl sm:text-3xl font-bold text-white">⛪ IPR Team Scheduler <span id="app-version" class="text-sm font-normal text-gray-500"></span></h1>
             <div class="flex items-center gap-3">
-                <span id="user-badge" class="text-sm text-gray-400"></span>
-                <div id="status-badge" class="px-3 py-1 rounded-full text-sm font-medium"></div>
-                <button onclick="logout()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm">Logout</button>
+                <span id="user-badge" class="text-base text-gray-300"></span>
+                <div id="status-badge" class="px-4 py-2 rounded-full text-base font-semibold"></div>
+                <button onclick="logout()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-base font-medium">Logout</button>
             </div>
         </div>
 
-        <!-- Tabs -->
-        <div class="flex space-x-1 mb-6 bg-gray-800 p-1 rounded-lg w-fit">
-            <button onclick="showTab('dashboard')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="dashboard">Dashboard</button>
-            <button onclick="showTab('team')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="team">Team</button>
-            <button onclick="showTab('schedule')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="schedule">Schedule</button>
-            <button onclick="showTab('calendar')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="calendar">📅 Calendar</button>
-            <button onclick="showTab('send')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="send">Manual Send</button>
-            <button onclick="showTab('logs')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="logs">Logs</button>
-            <button onclick="showTab('settings')" class="tab-btn px-4 py-2 rounded-md text-sm font-medium" data-tab="settings">Settings</button>
+        <!-- Tabs - larger, clearer, with icons -->
+        <div class="flex flex-wrap gap-2 mb-6 bg-gray-800 p-2 rounded-lg">
+            <button onclick="showTab('dashboard')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="dashboard">🏠 Home</button>
+            <button onclick="showTab('team')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="team">👥 Team</button>
+            <button onclick="showTab('schedule')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="schedule">📝 Schedule</button>
+            <button onclick="showTab('calendar')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="calendar">📅 Calendar</button>
+            <button onclick="showTab('send')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="send">📤 Send</button>
+            <button onclick="showTab('logs')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="logs">📋 History</button>
+            <button onclick="showTab('settings')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="settings">⚙️ Settings</button>
         </div>
 
         <!-- Dashboard Tab -->
         <div id="tab-dashboard" class="tab-content">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 uppercase">Connection</h3>
-                    <p id="conn-status" class="text-2xl font-bold mt-1">...</p>
+                <div class="bg-gray-800 rounded-lg p-5">
+                    <h3 class="text-base text-gray-400 uppercase font-semibold">WhatsApp Status</h3>
+                    <p id="conn-status" class="text-2xl font-bold mt-2">...</p>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 uppercase">Today</h3>
-                    <p id="today-date" class="text-2xl font-bold mt-1">...</p>
+                <div class="bg-gray-800 rounded-lg p-5">
+                    <h3 class="text-base text-gray-400 uppercase font-semibold">Today's Date</h3>
+                    <p id="today-date" class="text-2xl font-bold mt-2">...</p>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-sm text-gray-400 uppercase">Target Group</h3>
-                    <p id="group-alias" class="text-lg font-bold mt-1">...</p>
+                <div class="bg-gray-800 rounded-lg p-5">
+                    <h3 class="text-base text-gray-400 uppercase font-semibold">Sending Messages To</h3>
+                    <p id="group-alias" class="text-xl font-bold mt-2">...</p>
                     <p id="group-jid" class="text-xs font-mono text-gray-500 mt-1 break-all">...</p>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-lg p-4">
-                <h3 class="text-lg font-semibold mb-3">Recent Messages</h3>
-                <div id="recent-logs" class="space-y-2"></div>
+            <div class="bg-gray-800 rounded-lg p-5">
+                <h3 class="text-xl font-semibold mb-4">📬 Recent Messages Sent</h3>
+                <div id="recent-logs" class="space-y-3"></div>
             </div>
         </div>
 
         <!-- Team Tab -->
         <div id="tab-team" class="tab-content hidden">
-            <div class="bg-gray-800 rounded-lg p-4 mb-4">
-                <h3 class="text-lg font-semibold mb-3">Add Team Member</h3>
-                <div class="flex gap-3">
-                    <input id="member-name" type="text" placeholder="Name" class="flex-1 bg-gray-700 rounded px-3 py-2 text-sm">
-                    <input id="member-phone" type="text" placeholder="Phone (e.g. 17871234567)" class="flex-1 bg-gray-700 rounded px-3 py-2 text-sm">
-                    <button onclick="addMember()" class="bg-primary hover:bg-indigo-500 px-4 py-2 rounded text-sm font-medium">Add</button>
+            <div class="bg-gray-800 rounded-lg p-5 mb-4">
+                <h3 class="text-xl font-semibold mb-2">➕ Add a New Team Member</h3>
+                <p class="text-base text-gray-400 mb-4">Enter the person's name and their phone number (with country code, like 17871234567).</p>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input id="member-name" type="text" placeholder="Full name" class="flex-1 bg-gray-700 rounded px-4 py-3 text-base" aria-label="Team member name">
+                    <input id="member-phone" type="tel" placeholder="Phone (e.g. 17871234567)" class="flex-1 bg-gray-700 rounded px-4 py-3 text-base" aria-label="Phone number">
+                    <button onclick="addMember()" class="bg-primary hover:bg-indigo-500 px-6 py-3 rounded text-base font-semibold whitespace-nowrap">➕ Add Member</button>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-lg p-4">
-                <h3 class="text-lg font-semibold mb-3">Team Members</h3>
-                <div id="team-list" class="space-y-2"></div>
+            <div class="bg-gray-800 rounded-lg p-5">
+                <h3 class="text-xl font-semibold mb-4">👥 Current Team Members</h3>
+                <div id="team-list" class="space-y-3"></div>
             </div>
         </div>
 
         <!-- Schedule Tab -->
         <div id="tab-schedule" class="tab-content hidden">
-            <div class="bg-gray-800 rounded-lg p-4 mb-4">
-                <h3 class="text-lg font-semibold mb-3">Add Schedule Entry</h3>
-                <div class="flex gap-3 flex-wrap">
-                    <input id="sched-date" type="date" class="bg-gray-700 rounded px-3 py-2 text-sm">
-                    <select id="sched-day-type" class="bg-gray-700 rounded px-3 py-2 text-sm">
-                        <option value="thursday">Thursday</option>
-                        <option value="sunday">Sunday</option>
-                    </select>
-                    <select id="sched-member" class="bg-gray-700 rounded px-3 py-2 text-sm flex-1">
-                        <option value="">Select member...</option>
-                    </select>
-                    <select id="sched-role" class="bg-gray-700 rounded px-3 py-2 text-sm">
-                        <option value="primary">Primary</option>
-                        <option value="backup">🔄 Backup</option>
-                    </select>
-                    <button onclick="addSchedule()" class="bg-primary hover:bg-indigo-500 px-4 py-2 rounded text-sm font-medium">Add</button>
+            <div class="bg-gray-800 rounded-lg p-5 mb-4">
+                <h3 class="text-xl font-semibold mb-2">➕ Assign Someone to a Service Day</h3>
+                <p class="text-base text-gray-400 mb-4">Pick a date, choose the person, and select their role.</p>
+                <div class="flex flex-col sm:flex-row gap-3 flex-wrap">
+                    <div class="flex flex-col gap-1">
+                        <label for="sched-date" class="text-sm text-gray-400 font-medium">Date</label>
+                        <input id="sched-date" type="date" class="bg-gray-700 rounded px-4 py-3 text-base">
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label for="sched-day-type" class="text-sm text-gray-400 font-medium">Day Type</label>
+                        <select id="sched-day-type" class="bg-gray-700 rounded px-4 py-3 text-base">
+                            <option value="thursday">Thursday</option>
+                            <option value="sunday">Sunday</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1 flex-1">
+                        <label for="sched-member" class="text-sm text-gray-400 font-medium">Person</label>
+                        <select id="sched-member" class="bg-gray-700 rounded px-4 py-3 text-base">
+                            <option value="">Select a person...</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label for="sched-role" class="text-sm text-gray-400 font-medium">Role</label>
+                        <select id="sched-role" class="bg-gray-700 rounded px-4 py-3 text-base">
+                            <option value="primary">⭐ Primary</option>
+                            <option value="backup">🔄 Backup</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col justify-end">
+                        <button onclick="addSchedule()" class="bg-primary hover:bg-indigo-500 px-6 py-3 rounded text-base font-semibold whitespace-nowrap">➕ Add</button>
+                    </div>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-lg p-4">
-                <h3 class="text-lg font-semibold mb-3">Upcoming Schedule</h3>
-                <div id="schedule-list" class="space-y-2"></div>
+            <div class="bg-gray-800 rounded-lg p-5">
+                <h3 class="text-xl font-semibold mb-4">📋 Upcoming Schedule</h3>
+                <div id="schedule-list" class="space-y-3"></div>
             </div>
         </div>
 
         <!-- Calendar Tab -->
         <div id="tab-calendar" class="tab-content hidden">
-            <div class="bg-gray-800 rounded-lg p-4">
+            <div class="bg-gray-800 rounded-lg p-5">
                 <div class="flex items-center justify-between mb-4">
-                    <button onclick="changeMonth(-1)" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-sm font-medium">← Prev</button>
-                    <h3 id="calendar-title" class="text-xl font-bold text-white"></h3>
-                    <button onclick="changeMonth(1)" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-sm font-medium">Next →</button>
+                    <button onclick="changeMonth(-1)" class="bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded text-base font-semibold">← Previous</button>
+                    <h3 id="calendar-title" class="text-2xl font-bold text-white"></h3>
+                    <button onclick="changeMonth(1)" class="bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded text-base font-semibold">Next →</button>
                 </div>
-                <div class="flex gap-4 justify-center mb-4 text-xs">
-                    <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-indigo-700"></span> Thursday</span>
-                    <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-emerald-700"></span> Sunday</span>
+                <div class="flex gap-4 justify-center mb-4 text-sm">
+                    <span class="flex items-center gap-1"><span class="inline-block w-4 h-4 rounded bg-indigo-700"></span> Thursday</span>
+                    <span class="flex items-center gap-1"><span class="inline-block w-4 h-4 rounded bg-emerald-700"></span> Sunday</span>
                     <span class="flex items-center gap-1">⭐ Primary</span>
                     <span class="flex items-center gap-1"><span class="text-yellow-400">🔄</span> Backup</span>
                 </div>
                 <div class="grid grid-cols-7 gap-1">
-                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Sun</div>
-                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Mon</div>
-                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Tue</div>
-                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Wed</div>
-                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Thu</div>
-                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Fri</div>
-                    <div class="text-center text-xs text-gray-500 font-semibold py-2">Sat</div>
+                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Sun</div>
+                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Mon</div>
+                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Tue</div>
+                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Wed</div>
+                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Thu</div>
+                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Fri</div>
+                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Sat</div>
                 </div>
                 <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
             </div>
@@ -129,65 +198,66 @@
         <!-- Manual Send Tab -->
         <div id="tab-send" class="tab-content hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-lg font-semibold mb-3">Send Messages</h3>
-                    <div class="mb-4 p-3 bg-gray-700 rounded">
-                        <label class="text-sm text-gray-400 block mb-1">Simulate as if today is:</label>
-                        <input id="sim-date" type="date" class="bg-gray-600 rounded px-3 py-2 text-sm w-full">
-                        <p class="text-xs text-gray-500 mt-1">Pick a Monday/Wednesday/Thursday/Saturday to test that day's message with real schedule data.</p>
+                <div class="bg-gray-800 rounded-lg p-5">
+                    <h3 class="text-xl font-semibold mb-2">📤 Send a Message</h3>
+                    <p class="text-base text-gray-400 mb-4">Click a button below to preview and send that day's message to the group chat.</p>
+                    <div class="mb-4 p-4 bg-gray-700 rounded">
+                        <label for="sim-date" class="text-base text-gray-300 block mb-2 font-medium">📆 Pretend today is:</label>
+                        <input id="sim-date" type="date" class="bg-gray-600 rounded px-4 py-3 text-base w-full">
+                        <p class="text-sm text-gray-400 mt-2">Pick a date to test what message would be sent on that day.</p>
                     </div>
-                    <div class="mb-4 p-3 bg-gray-700 rounded">
-                        <label class="text-sm text-gray-400 block mb-1">Send to group:</label>
-                        <select id="send-group-override" class="bg-gray-600 rounded px-3 py-2 text-sm w-full">
-                            <option value="">Default (configured target)</option>
+                    <div class="mb-4 p-4 bg-gray-700 rounded">
+                        <label for="send-group-override" class="text-base text-gray-300 block mb-2 font-medium">📱 Send to which group:</label>
+                        <select id="send-group-override" class="bg-gray-600 rounded px-4 py-3 text-base w-full">
+                            <option value="">Default group (the one in Settings)</option>
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">Override the target group for this send only.</p>
                     </div>
+                    <p class="text-base text-gray-300 mb-3 font-medium">Choose a message to send:</p>
                     <div class="space-y-3">
-                        <button onclick="previewMessage('monday-summary')" class="w-full bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded text-sm font-medium text-left">
-                            📋 Monday - Weekly Summary
+                        <button onclick="previewMessage('monday-summary')" class="w-full bg-blue-600 hover:bg-blue-500 px-5 py-4 rounded text-base font-semibold text-left">
+                            📋 Monday — Weekly Schedule Summary
                         </button>
-                        <button onclick="previewMessage('wednesday-reminder')" class="w-full bg-yellow-600 hover:bg-yellow-500 px-4 py-3 rounded text-sm font-medium text-left">
-                            👋 Wednesday - Thursday Reminder
+                        <button onclick="previewMessage('wednesday-reminder')" class="w-full bg-yellow-600 hover:bg-yellow-500 px-5 py-4 rounded text-base font-semibold text-left">
+                            👋 Wednesday — "Hey, tomorrow is your day" Reminder
                         </button>
-                        <button onclick="previewMessage('thursday-poll')" class="w-full bg-purple-600 hover:bg-purple-500 px-4 py-3 rounded text-sm font-medium text-left">
-                            📊 Thursday - Attendance Poll
+                        <button onclick="previewMessage('thursday-poll')" class="w-full bg-purple-600 hover:bg-purple-500 px-5 py-4 rounded text-base font-semibold text-left">
+                            📊 Thursday — Attendance Vote
                         </button>
-                        <button onclick="previewMessage('saturday-reminder')" class="w-full bg-orange-600 hover:bg-orange-500 px-4 py-3 rounded text-sm font-medium text-left">
-                            👋 Saturday - Sunday Reminder
+                        <button onclick="previewMessage('saturday-reminder')" class="w-full bg-orange-600 hover:bg-orange-500 px-5 py-4 rounded text-base font-semibold text-left">
+                            👋 Saturday — "Hey, tomorrow is Sunday" Reminder
                         </button>
-                        <button onclick="previewMessage('saturday-poll')" class="w-full bg-pink-600 hover:bg-pink-500 px-4 py-3 rounded text-sm font-medium text-left">
-                            📊 Saturday - Sunday Poll
+                        <button onclick="previewMessage('saturday-poll')" class="w-full bg-pink-600 hover:bg-pink-500 px-5 py-4 rounded text-base font-semibold text-left">
+                            📊 Saturday — Sunday Attendance Vote
                         </button>
                     </div>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <h3 class="text-lg font-semibold mb-3">Preview</h3>
-                    <div id="preview-area" class="bg-gray-900 rounded p-4 min-h-[200px] whitespace-pre-wrap text-sm font-mono">
-                        Click a message type to preview...
+                <div class="bg-gray-800 rounded-lg p-5">
+                    <h3 class="text-xl font-semibold mb-3">👁️ Preview</h3>
+                    <div id="preview-area" class="bg-gray-900 rounded p-4 min-h-[200px] whitespace-pre-wrap text-base font-mono border-2 border-gray-700">
+                        Click a message button on the left to see what it will look like...
                     </div>
-                    <div class="mt-3 flex gap-2">
-                        <button id="send-btn" onclick="sendMessage()" disabled class="flex-1 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded text-sm font-medium">
+                    <div class="mt-4 flex gap-3">
+                        <button id="send-btn" onclick="sendMessage()" disabled class="flex-1 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-5 py-3 rounded text-base font-semibold">
                             🚀 Send to Group
                         </button>
-                        <button id="force-send-btn" onclick="sendMessage(true)" disabled class="bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded text-sm font-medium">
+                        <button id="force-send-btn" onclick="sendMessage(true)" disabled class="bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-5 py-3 rounded text-base font-semibold" title="Send even if it was already sent today">
                             ⚡ Force Send
                         </button>
                     </div>
-                    <p class="text-xs text-gray-500 mt-2">Force Send ignores the "already sent today" check.</p>
+                    <p class="text-sm text-gray-400 mt-3">💡 <strong>Force Send</strong> = sends even if today's message was already sent.</p>
                 </div>
             </div>
 
             <!-- Personal DMs Section -->
-            <div class="bg-gray-800 rounded-lg p-4 mt-4">
-                <h3 class="text-lg font-semibold mb-3">📩 Personal DMs</h3>
-                <p class="text-sm text-gray-400 mb-3">Send individual messages to each team member letting them know their role.</p>
-                <div class="flex gap-3 mb-4">
-                    <select id="dm-day-type" class="bg-gray-700 rounded px-3 py-2 text-sm">
+            <div class="bg-gray-800 rounded-lg p-5 mt-4">
+                <h3 class="text-xl font-semibold mb-2">📩 Send Personal Messages</h3>
+                <p class="text-base text-gray-400 mb-4">Send a private WhatsApp message to each team member letting them know their role for the day.</p>
+                <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                    <select id="dm-day-type" class="bg-gray-700 rounded px-4 py-3 text-base">
                         <option value="thursday">Thursday team</option>
                         <option value="sunday">Sunday team</option>
                     </select>
-                    <button onclick="previewPersonalDMs()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded text-sm font-medium">👁️ Preview DMs</button>
+                    <button onclick="previewPersonalDMs()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded text-base font-semibold">👁️ Preview Messages</button>
                 </div>
                 <div id="personal-dm-list" class="space-y-3"></div>
             </div>
@@ -195,57 +265,60 @@
 
         <!-- Logs Tab -->
         <div id="tab-logs" class="tab-content hidden">
-            <div class="bg-gray-800 rounded-lg p-4">
-                <h3 class="text-lg font-semibold mb-3">Message History</h3>
-                <div id="logs-list" class="space-y-2"></div>
+            <div class="bg-gray-800 rounded-lg p-5">
+                <h3 class="text-xl font-semibold mb-4">📋 Message History</h3>
+                <p class="text-base text-gray-400 mb-4">A log of all messages that have been sent by the bot.</p>
+                <div id="logs-list" class="space-y-3"></div>
             </div>
         </div>
 
         <!-- Settings Tab -->
         <div id="tab-settings" class="tab-content hidden">
-            <div class="bg-gray-800 rounded-lg p-4 mb-4">
-                <h3 class="text-lg font-semibold mb-3">Target Group Chat</h3>
-                <p class="text-sm text-gray-400 mb-3">Select the WhatsApp group where messages will be sent:</p>
-                <div class="flex gap-3 items-center mb-4">
-                    <select id="group-select" class="flex-1 bg-gray-700 rounded px-3 py-2 text-sm">
+            <div class="bg-gray-800 rounded-lg p-5 mb-4">
+                <h3 class="text-xl font-semibold mb-2">📱 Target Group Chat</h3>
+                <p class="text-base text-gray-400 mb-4">This is the WhatsApp group where automated messages will be sent:</p>
+                <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center mb-4">
+                    <select id="group-select" class="flex-1 bg-gray-700 rounded px-4 py-3 text-base">
                         <option value="">Loading groups...</option>
                     </select>
-                    <button onclick="loadGroups()" class="bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded text-sm">🔄 Refresh</button>
-                    <button onclick="saveGroup()" class="bg-primary hover:bg-indigo-500 px-4 py-2 rounded text-sm font-medium">💾 Save</button>
+                    <button onclick="loadGroups()" class="bg-gray-600 hover:bg-gray-500 px-5 py-3 rounded text-base font-medium">🔄 Refresh List</button>
+                    <button onclick="saveGroup()" class="bg-primary hover:bg-indigo-500 px-6 py-3 rounded text-base font-semibold">💾 Save</button>
                 </div>
-                <div id="current-group" class="bg-gray-700 rounded p-3 text-sm">
-                    <span class="text-gray-400">Current: </span><span id="current-group-jid" class="font-mono">...</span>
+                <div id="current-group" class="bg-gray-700 rounded p-4 text-base">
+                    <span class="text-gray-400">Currently sending to: </span><span id="current-group-jid" class="font-mono text-sm">...</span>
                 </div>
             </div>
 
-            <div class="bg-gray-800 rounded-lg p-4">
-                <h3 class="text-lg font-semibold mb-3">Group Aliases</h3>
-                <p class="text-sm text-gray-400 mb-3">Give friendly names to your groups for easier identification:</p>
-                <div id="groups-alias-list" class="space-y-2"></div>
+            <div class="bg-gray-800 rounded-lg p-5">
+                <h3 class="text-xl font-semibold mb-2">🏷️ Group Nicknames</h3>
+                <p class="text-base text-gray-400 mb-4">Give your groups friendly names so they're easier to identify:</p>
+                <div id="groups-alias-list" class="space-y-3"></div>
             </div>
 
             <!-- User Management (admin only) -->
-            <div id="users-section" class="bg-gray-800 rounded-lg p-4 mt-4 hidden">
-                <h3 class="text-lg font-semibold mb-3">👤 User Management</h3>
-                <div class="mb-4 p-3 bg-gray-700 rounded">
-                    <h4 class="text-sm text-gray-400 mb-2">Add User</h4>
-                    <div class="flex gap-2">
-                        <input id="new-user" type="text" placeholder="Username" class="flex-1 bg-gray-600 rounded px-3 py-2 text-sm">
-                        <input id="new-pass" type="password" placeholder="Password (min 6)" class="flex-1 bg-gray-600 rounded px-3 py-2 text-sm">
-                        <label class="flex items-center gap-1 text-sm text-gray-400"><input type="checkbox" id="new-admin"> Admin</label>
-                        <button onclick="addUser()" class="bg-primary hover:bg-indigo-500 px-4 py-2 rounded text-sm font-medium">Add</button>
+            <div id="users-section" class="bg-gray-800 rounded-lg p-5 mt-4 hidden">
+                <h3 class="text-xl font-semibold mb-2">👤 Manage Users</h3>
+                <p class="text-base text-gray-400 mb-4">Add or remove people who can log into this tool:</p>
+                <div class="mb-4 p-4 bg-gray-700 rounded">
+                    <h4 class="text-base text-gray-300 mb-3 font-medium">Add a New User</h4>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input id="new-user" type="text" placeholder="Username" class="flex-1 bg-gray-600 rounded px-4 py-3 text-base" aria-label="New username">
+                        <input id="new-pass" type="password" placeholder="Password (6+ characters)" class="flex-1 bg-gray-600 rounded px-4 py-3 text-base" aria-label="New password">
+                        <label class="flex items-center gap-2 text-base text-gray-300 px-2"><input type="checkbox" id="new-admin" class="w-5 h-5"> Admin</label>
+                        <button onclick="addUser()" class="bg-primary hover:bg-indigo-500 px-6 py-3 rounded text-base font-semibold whitespace-nowrap">➕ Add User</button>
                     </div>
                 </div>
-                <div id="users-list" class="space-y-2"></div>
+                <div id="users-list" class="space-y-3"></div>
             </div>
 
             <!-- Change Password -->
-            <div class="bg-gray-800 rounded-lg p-4 mt-4">
-                <h3 class="text-lg font-semibold mb-3">🔒 Change Password</h3>
-                <div class="flex gap-2">
-                    <input id="curr-pass" type="password" placeholder="Current password" class="flex-1 bg-gray-700 rounded px-3 py-2 text-sm">
-                    <input id="new-password" type="password" placeholder="New password (min 6)" class="flex-1 bg-gray-700 rounded px-3 py-2 text-sm">
-                    <button onclick="changePassword()" class="bg-yellow-600 hover:bg-yellow-500 px-4 py-2 rounded text-sm font-medium">Update</button>
+            <div class="bg-gray-800 rounded-lg p-5 mt-4">
+                <h3 class="text-xl font-semibold mb-2">🔒 Change Your Password</h3>
+                <p class="text-base text-gray-400 mb-4">Update your login password:</p>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input id="curr-pass" type="password" placeholder="Current password" class="flex-1 bg-gray-700 rounded px-4 py-3 text-base" aria-label="Current password">
+                    <input id="new-password" type="password" placeholder="New password (6+ characters)" class="flex-1 bg-gray-700 rounded px-4 py-3 text-base" aria-label="New password">
+                    <button onclick="changePassword()" class="bg-yellow-600 hover:bg-yellow-500 px-6 py-3 rounded text-base font-semibold whitespace-nowrap">🔒 Update Password</button>
                 </div>
             </div>
         </div>
@@ -253,6 +326,18 @@
 
     <script>
         let currentPreviewType = null
+
+        // Toast notification system (replaces jarring alert() popups)
+        function showToast(message, type = 'info', duration = 4000) {
+            const existing = document.querySelector('.toast')
+            if (existing) existing.remove()
+            const toast = document.createElement('div')
+            toast.className = `toast toast-${type}`
+            toast.textContent = message
+            toast.setAttribute('role', 'alert')
+            document.body.appendChild(toast)
+            setTimeout(() => toast.remove(), duration)
+        }
 
         // Tab management
         function showTab(tab) {
@@ -279,24 +364,27 @@
             const res = await fetch('/api/status')
             const data = await res.json()
             document.getElementById('app-version').textContent = data.version ? `v${data.version}` : ''
-            document.getElementById('conn-status').textContent = data.connection
-            document.getElementById('conn-status').className = `text-2xl font-bold mt-1 ${data.connection === 'connected' ? 'text-green-400' : 'text-red-400'}`
+            
+            const connEl = document.getElementById('conn-status')
+            connEl.textContent = data.connection === 'connected' ? '✅ Connected' : '❌ Disconnected'
+            connEl.className = `text-2xl font-bold mt-2 ${data.connection === 'connected' ? 'text-green-400' : 'text-red-400'}`
+            
             document.getElementById('today-date').textContent = data.today
             document.getElementById('group-jid').textContent = data.groupJid
             document.getElementById('group-alias').textContent = data.groupAlias || 'Not configured'
-            document.getElementById('group-alias').className = `text-lg font-bold mt-1 ${data.groupAlias ? 'text-green-400' : 'text-yellow-400'}`
+            document.getElementById('group-alias').className = `text-xl font-bold mt-2 ${data.groupAlias ? 'text-green-400' : 'text-yellow-400'}`
 
             const badge = document.getElementById('status-badge')
-            badge.textContent = data.connection
-            badge.className = `px-3 py-1 rounded-full text-sm font-medium ${data.connection === 'connected' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`
+            badge.textContent = data.connection === 'connected' ? '🟢 Online' : '🔴 Offline'
+            badge.className = `px-4 py-2 rounded-full text-base font-semibold ${data.connection === 'connected' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`
 
             const logsDiv = document.getElementById('recent-logs')
             logsDiv.innerHTML = data.recentLogs.map(l => `
-                <div class="flex justify-between items-center bg-gray-700 rounded px-3 py-2 text-sm">
-                    <span class="font-medium">${l.message_type}</span>
+                <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3 text-base">
+                    <span class="font-semibold">${l.message_type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
                     <span class="text-gray-400">${l.sent_at}</span>
                 </div>
-            `).join('') || '<p class="text-gray-500">No messages sent yet</p>'
+            `).join('') || '<p class="text-gray-400 text-base">No messages sent yet. Go to the 📤 Send tab to send your first message!</p>'
         }
 
         // Team
@@ -305,27 +393,27 @@
             const members = await res.json()
             const div = document.getElementById('team-list')
             div.innerHTML = members.map(m => `
-                <div class="flex justify-between items-center bg-gray-700 rounded px-3 py-2" id="member-row-${m.id}">
+                <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3" id="member-row-${m.id}">
                     <div>
-                        <span class="font-medium">${m.name}</span>
-                        <span class="text-gray-400 text-sm ml-2">+${m.phone}</span>
+                        <span class="font-semibold text-base">${m.name}</span>
+                        <span class="text-gray-400 text-base ml-2">📱 +${m.phone}</span>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="editMember(${m.id}, '${m.name.replace(/'/g, "\\'")}', '${m.phone}')" class="text-blue-400 hover:text-blue-300 text-sm">✏️ Edit</button>
-                        <button onclick="deleteMember(${m.id})" class="text-red-400 hover:text-red-300 text-sm">✕ Remove</button>
+                    <div class="flex gap-3">
+                        <button onclick="editMember(${m.id}, '${m.name.replace(/'/g, "\\'")}', '${m.phone}')" class="bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">✏️ Edit</button>
+                        <button onclick="deleteMember(${m.id})" class="bg-red-800 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium">🗑️ Remove</button>
                     </div>
                 </div>
-            `).join('') || '<p class="text-gray-500">No team members yet</p>'
+            `).join('') || '<p class="text-gray-400 text-base">No team members yet. Add someone above!</p>'
         }
 
         function editMember(id, currentName, currentPhone) {
             const row = document.getElementById(`member-row-${id}`)
             row.innerHTML = `
-                <div class="flex gap-2 w-full items-center">
-                    <input id="edit-name-${id}" type="text" value="${currentName}" class="flex-1 bg-gray-600 rounded px-2 py-1 text-sm">
-                    <input id="edit-phone-${id}" type="text" value="${currentPhone}" class="flex-1 bg-gray-600 rounded px-2 py-1 text-sm">
-                    <button onclick="saveMember(${id})" class="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-sm">✓ Save</button>
-                    <button onclick="loadTeam()" class="bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-sm">✕ Cancel</button>
+                <div class="flex flex-col sm:flex-row gap-3 w-full items-stretch sm:items-center">
+                    <input id="edit-name-${id}" type="text" value="${currentName}" class="flex-1 bg-gray-600 rounded px-4 py-3 text-base">
+                    <input id="edit-phone-${id}" type="text" value="${currentPhone}" class="flex-1 bg-gray-600 rounded px-4 py-3 text-base">
+                    <button onclick="saveMember(${id})" class="bg-green-600 hover:bg-green-500 px-5 py-3 rounded text-base font-semibold">✅ Save</button>
+                    <button onclick="loadTeam()" class="bg-gray-600 hover:bg-gray-500 px-5 py-3 rounded text-base font-medium">❌ Cancel</button>
                 </div>
             `
         }
@@ -333,24 +421,27 @@
         async function saveMember(id) {
             const name = document.getElementById(`edit-name-${id}`).value.trim()
             const phone = document.getElementById(`edit-phone-${id}`).value.trim()
-            if (!name || !phone) return alert('Name and phone required')
+            if (!name || !phone) return showToast('Please fill in both name and phone number', 'error')
             await fetch(`/api/team/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, phone }) })
+            showToast('✅ Member updated!', 'success')
             loadTeam()
         }
 
         async function addMember() {
             const name = document.getElementById('member-name').value.trim()
             const phone = document.getElementById('member-phone').value.trim()
-            if (!name || !phone) return alert('Name and phone required')
+            if (!name || !phone) return showToast('Please fill in both name and phone number', 'error')
             await fetch('/api/team', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, phone }) })
             document.getElementById('member-name').value = ''
             document.getElementById('member-phone').value = ''
+            showToast(`✅ ${name} added to the team!`, 'success')
             loadTeam()
         }
 
         async function deleteMember(id) {
-            if (!confirm('Remove this member?')) return
+            if (!confirm('Are you sure you want to remove this team member?')) return
             await fetch(`/api/team/${id}`, { method: 'DELETE' })
+            showToast('Member removed', 'info')
             loadTeam()
         }
 
@@ -391,8 +482,9 @@
             const day_type = document.getElementById('sched-day-type').value
             const member_id = document.getElementById('sched-member').value
             const role = document.getElementById('sched-role').value
-            if (!service_date || !member_id) return alert('Date and member required')
+            if (!service_date || !member_id) return showToast('Please pick a date and select a person', 'error')
             await fetch('/api/schedule', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ service_date, day_type, member_id: parseInt(member_id), role }) })
+            showToast('✅ Schedule entry added!', 'success')
             loadSchedule()
         }
 
@@ -519,21 +611,21 @@
         }
 
         async function sendPersonalDM(phone, dayType) {
-            if (!confirm(`Send personal DM to +${phone}?`)) return
+            if (!confirm(`Send a personal message to +${phone}?`)) return
             const simDate = document.getElementById('sim-date').value || undefined
             const res = await fetch('/api/personal/send', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ date: simDate, dayType, phone }) })
             const data = await res.json()
-            if (data.sent) alert('✅ DM sent!')
-            else alert('❌ Error: ' + (data.error || 'Unknown'))
+            if (data.sent) showToast('✅ Personal message sent!', 'success')
+            else showToast('❌ Could not send: ' + (data.error || 'Unknown error'), 'error')
         }
 
         async function sendAllPersonalDMs(dayType) {
-            if (!confirm('Send personal DMs to ALL listed members?')) return
+            if (!confirm('Send personal messages to ALL listed members?')) return
             const simDate = document.getElementById('sim-date').value || undefined
             const res = await fetch('/api/personal/send', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ date: simDate, dayType }) })
             const data = await res.json()
-            if (data.sent) alert(`✅ Sent ${data.sent} DMs!`)
-            else alert('❌ Error: ' + (data.error || 'Unknown'))
+            if (data.sent) showToast(`✅ Sent ${data.sent} personal messages!`, 'success')
+            else showToast('❌ Could not send: ' + (data.error || 'Unknown error'), 'error')
         }
 
         async function previewMessage(type) {
@@ -548,19 +640,19 @@
 
         async function sendMessage(force = false) {
             if (!currentPreviewType) return
-            if (!confirm(`Send "${currentPreviewType}" to the group${force ? ' (FORCE)' : ''}?`)) return
+            if (!confirm(`Send "${currentPreviewType.replace(/-/g, ' ')}" to the group${force ? ' (even if already sent today)' : ''}?`)) return
             const simDate = document.getElementById('sim-date').value || undefined
             const groupOverride = document.getElementById('send-group-override').value || undefined
             const res = await fetch('/api/send', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ type: currentPreviewType, force, date: simDate, groupJid: groupOverride }) })
             const data = await res.json()
             if (data.sent) {
-                alert('✅ Message sent!')
+                showToast('✅ Message sent to the group!', 'success')
             } else if (data.queued) {
-                alert('✅ Message queued — worker will send it within 10 seconds')
+                showToast('✅ Message queued — it will be sent in a few seconds', 'success')
             } else if (data.skipped) {
-                alert('⏭️ Already sent today. Use Force Send to override.')
+                showToast('⏭️ Already sent today. Use "Force Send" to send it again.', 'info', 5000)
             } else {
-                alert('❌ Error: ' + (data.error || 'Unknown error'))
+                showToast('❌ Could not send: ' + (data.error || 'Unknown error'), 'error')
             }
         }
 
@@ -623,17 +715,18 @@
         async function saveAlias(jid) {
             const inputId = `alias-${jid.replace(/[@.]/g, '_')}`
             const alias = document.getElementById(inputId).value.trim()
-            if (!alias) return alert('Enter an alias')
+            if (!alias) return showToast('Please type a nickname for this group', 'error')
             await fetch('/api/groups/alias', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ jid, alias }) })
+            showToast('✅ Nickname saved!', 'success')
             loadGroups()
         }
 
         async function saveGroup() {
             const jid = document.getElementById('group-select').value
-            if (!jid) return alert('Select a group first')
+            if (!jid) return showToast('Please select a group from the list first', 'error')
             await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ key: 'group_jid', value: jid }) })
             document.getElementById('current-group-jid').textContent = jid
-            alert('✅ Group saved!')
+            showToast('✅ Target group saved! Messages will go to this group.', 'success')
         }
 
         // Auth / Users
@@ -669,29 +762,29 @@
             const username = document.getElementById('new-user').value.trim()
             const password = document.getElementById('new-pass').value
             const isAdmin = document.getElementById('new-admin').checked
-            if (!username || !password) return alert('Username and password required')
+            if (!username || !password) return showToast('Please fill in username and password', 'error')
             const res = await fetch('/api/users', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ username, password, isAdmin }) })
             const data = await res.json()
-            if (data.success) { document.getElementById('new-user').value = ''; document.getElementById('new-pass').value = ''; loadUsers() }
-            else alert('❌ ' + data.error)
+            if (data.success) { document.getElementById('new-user').value = ''; document.getElementById('new-pass').value = ''; showToast(`✅ User "${username}" created!`, 'success'); loadUsers() }
+            else showToast('❌ ' + data.error, 'error')
         }
 
         async function deleteUser(id, name) {
-            if (!confirm(`Remove user "${name}"?`)) return
+            if (!confirm(`Are you sure you want to remove user "${name}"?`)) return
             const res = await fetch(`/api/users/${id}`, { method: 'DELETE' })
             const data = await res.json()
-            if (data.success) loadUsers()
-            else alert('❌ ' + data.error)
+            if (data.success) { showToast('User removed', 'info'); loadUsers() }
+            else showToast('❌ ' + data.error, 'error')
         }
 
         async function changePassword() {
             const curr = document.getElementById('curr-pass').value
             const newP = document.getElementById('new-password').value
-            if (!curr || !newP) return alert('Both fields required')
+            if (!curr || !newP) return showToast('Please fill in both password fields', 'error')
             const res = await fetch('/api/users/change-password', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ currentPassword: curr, newPassword: newP }) })
             const data = await res.json()
-            if (data.success) { alert('✅ Password updated!'); document.getElementById('curr-pass').value = ''; document.getElementById('new-password').value = '' }
-            else alert('❌ ' + data.error)
+            if (data.success) { showToast('✅ Password updated successfully!', 'success'); document.getElementById('curr-pass').value = ''; document.getElementById('new-password').value = '' }
+            else showToast('❌ ' + data.error, 'error')
         }
 
         async function logout() {
