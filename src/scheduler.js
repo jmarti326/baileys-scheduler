@@ -1,7 +1,7 @@
 const cron = require('node-cron')
 const { getDb } = require('./db/index')
 const { sendTextMessage, sendPoll, getStatus } = require('./bot')
-const { buildMondaySummary, buildWednesdayReminder, buildThursdayPoll, buildSaturdayReminder, buildSaturdayPoll } = require('./messages')
+const { buildMondaySummary, buildWednesdayReminder, buildThursdayPoll, buildSaturdayReminder, buildSaturdayPoll, buildPersonalNotifications } = require('./messages')
 
 async function getGroupJid() {
     const db = await getDb()
@@ -72,34 +72,86 @@ async function sendScheduledMessage(type, buildFn, forceSend = false, dateOverri
     }
 }
 
+/**
+ * Send personal DM notifications to all assigned members for a given day type.
+ * Called automatically after the group reminder messages.
+ */
+async function sendPersonalDMs(today, dayType) {
+    const dmKey = messageKey(`personal-dm-${dayType}`, today)
+    if (await alreadySent(dmKey)) {
+        console.log(`[SCHEDULER] ⏭️ Personal DMs already sent: ${dmKey}`)
+        return { skipped: true }
+    }
+
+    if (getStatus() !== 'connected') {
+        console.log(`[SCHEDULER] ❌ Bot not connected, skipping personal DMs`)
+        return { error: 'Bot not connected' }
+    }
+
+    try {
+        const notifications = await buildPersonalNotifications(today, dayType)
+        let sentCount = 0
+
+        for (const notif of notifications) {
+            try {
+                await sendTextMessage(notif.jid, notif.text)
+                console.log(`[SCHEDULER] 📨 DM sent to ${notif.name} (${notif.role})`)
+                sentCount++
+                // Small delay between DMs to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 2000))
+            } catch (err) {
+                console.error(`[SCHEDULER] ❌ Failed DM to ${notif.name}:`, err.message)
+            }
+        }
+
+        await logMessage(dmKey, `personal-dm-${dayType}`, `Sent ${sentCount}/${notifications.length} personal DMs`)
+        console.log(`[SCHEDULER] ✅ Personal DMs complete: ${sentCount}/${notifications.length}`)
+        return { sent: true, count: sentCount, total: notifications.length }
+    } catch (err) {
+        console.error(`[SCHEDULER] ❌ Personal DMs failed:`, err.message)
+        return { error: err.message }
+    }
+}
+
 function startScheduler() {
-    cron.schedule('5 9 * * 1', () => {
+    // Monday 8:00 AM AST — Weekly summary + personal DMs for Thursday team
+    cron.schedule('0 8 * * 1', async () => {
         console.log('[CRON] Monday summary triggered')
-        sendScheduledMessage('monday-summary', buildMondaySummary)
+        await sendScheduledMessage('monday-summary', buildMondaySummary)
     }, { timezone: 'America/Puerto_Rico' })
 
-    cron.schedule('5 9 * * 3', () => {
+    // Wednesday 8:00 AM AST — Thursday reminder + personal DMs to Thursday team
+    cron.schedule('0 8 * * 3', async () => {
         console.log('[CRON] Wednesday reminder triggered')
-        sendScheduledMessage('wednesday-reminder', buildWednesdayReminder)
+        const today = getToday()
+        await sendScheduledMessage('wednesday-reminder', buildWednesdayReminder)
+        // Send individual DMs to Thursday team after group message
+        setTimeout(() => sendPersonalDMs(today, 'thursday'), 5000)
     }, { timezone: 'America/Puerto_Rico' })
 
-    cron.schedule('5 9 * * 4', () => {
+    // Thursday 8:00 AM AST — Attendance poll
+    cron.schedule('0 8 * * 4', async () => {
         console.log('[CRON] Thursday poll triggered')
-        sendScheduledMessage('thursday-poll', null)
+        await sendScheduledMessage('thursday-poll', null)
     }, { timezone: 'America/Puerto_Rico' })
 
-    cron.schedule('5 9 * * 6', () => {
+    // Saturday 8:00 AM AST — Sunday reminder + poll + personal DMs to Sunday team
+    cron.schedule('0 8 * * 6', async () => {
         console.log('[CRON] Saturday reminder + poll triggered')
-        sendScheduledMessage('saturday-reminder', buildSaturdayReminder)
-        setTimeout(() => {
-            sendScheduledMessage('saturday-poll', null)
+        const today = getToday()
+        await sendScheduledMessage('saturday-reminder', buildSaturdayReminder)
+        setTimeout(async () => {
+            await sendScheduledMessage('saturday-poll', null)
+            // Send individual DMs to Sunday team after group messages
+            setTimeout(() => sendPersonalDMs(today, 'sunday'), 5000)
         }, 3000)
     }, { timezone: 'America/Puerto_Rico' })
 
     // Poll for queued sends from the API every 10 seconds
     setInterval(processPendingSends, 10000)
 
-    console.log('[SCHEDULER] ✅ Cron jobs started (Mon/Wed/Thu/Sat at 9:05 AM AST)')
+    console.log('[SCHEDULER] ✅ Cron jobs started (Mon/Wed/Thu/Sat at 8:00 AM AST)')
+    console.log('[SCHEDULER] 📨 Personal DMs enabled for Wed (Thu team) and Sat (Sun team)')
 }
 
 async function processPendingSends() {
@@ -134,4 +186,4 @@ async function processPendingSends() {
     }
 }
 
-module.exports = { startScheduler, sendScheduledMessage, getToday, getGroupJid }
+module.exports = { startScheduler, sendScheduledMessage, sendPersonalDMs, getToday, getGroupJid }
