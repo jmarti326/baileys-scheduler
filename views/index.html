@@ -455,71 +455,87 @@
 
         // Dashboard
         async function loadDashboard() {
-            const res = await fetch('/api/status')
-            const data = await res.json()
-            document.getElementById('app-version').textContent = data.version ? `v${data.version}` : ''
+            try {
+                const res = await fetch('/api/status')
+                if (!res.ok) throw new Error('API error')
+                const data = await res.json()
+                document.getElementById('app-version').textContent = data.version ? `v${data.version}` : ''
 
-            // Friendly greeting based on time of day
-            const hour = new Date().getHours()
-            const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
-            const userName = document.getElementById('user-badge')?.textContent?.replace('👤 ', '').split(' (')[0] || ''
-            document.getElementById('greeting').textContent = `👋 ${timeGreeting}${userName ? ', ' + userName : ''}!`
+                // Friendly greeting based on time of day
+                const hour = new Date().getHours()
+                const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+                const userName = document.getElementById('user-badge')?.textContent?.replace('👤 ', '').split(' (')[0] || ''
+                document.getElementById('greeting').textContent = `👋 ${timeGreeting}${userName ? ', ' + userName : ''}!`
 
-            // Friendly date
-            const today = new Date()
-            const friendlyDate = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-            document.getElementById('today-friendly').textContent = friendlyDate
+                // Friendly date
+                const today = new Date()
+                const friendlyDate = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                document.getElementById('today-friendly').textContent = friendlyDate
 
-            // Connection status
-            const connEl = document.getElementById('conn-status')
-            if (data.connection === 'connected') {
-                connEl.innerHTML = '<span class="text-green-600">Connected ✓</span>'
-            } else {
-                connEl.innerHTML = '<span class="text-red-500">Offline ✕</span>'
-            }
+                // Connection status
+                const connEl = document.getElementById('conn-status')
+                if (data.connection === 'connected') {
+                    connEl.innerHTML = '<span class="text-green-600 font-bold">Connected ✓</span>'
+                } else {
+                    connEl.innerHTML = '<span class="text-amber-600 font-bold">Offline</span>'
+                }
 
-            // Status pill in welcome banner
-            const pill = document.getElementById('status-pill')
-            pill.innerHTML = data.connection === 'connected'
-                ? '<span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span><span class="text-green-700">Live</span>'
-                : '<span class="w-2 h-2 bg-red-500 rounded-full"></span><span class="text-red-700">Offline</span>'
-            pill.className = `flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${data.connection === 'connected' ? 'bg-green-100' : 'bg-red-100'}`
+                // Status pill in welcome banner
+                const pill = document.getElementById('status-pill')
+                pill.innerHTML = data.connection === 'connected'
+                    ? '<span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span><span class="text-green-700">Live</span>'
+                    : '<span class="w-2 h-2 bg-amber-500 rounded-full"></span><span class="text-amber-700">Worker Offline</span>'
+                pill.className = `flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${data.connection === 'connected' ? 'bg-green-100' : 'bg-amber-100'}`
 
-            // Group display
-            const groupDisplay = data.groupAlias || (data.groupJid ? 'Configured ✓' : 'Not set up')
-            document.getElementById('group-alias').textContent = groupDisplay
-            document.getElementById('group-alias').className = `text-base font-bold ${data.groupJid ? 'text-green-600' : 'text-amber-600'}`
+                // Group display
+                const groupDisplay = data.groupAlias || (data.groupJid ? 'Configured ✓' : 'Not set up')
+                document.getElementById('group-alias').textContent = groupDisplay
+                document.getElementById('group-alias').className = `text-base font-bold ${data.groupJid ? 'text-green-600' : 'text-amber-600'}`
 
-            // Desktop header badge
-            const badge = document.getElementById('status-badge')
-            badge.textContent = data.connection === 'connected' ? '🟢 Online' : '🔴 Offline'
-            badge.className = `px-3 py-1.5 rounded-full text-xs font-semibold ${data.connection === 'connected' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`
+                // Desktop header badge
+                const badge = document.getElementById('status-badge')
+                badge.textContent = data.connection === 'connected' ? '🟢 Online' : '🔴 Offline'
+                badge.className = `px-3 py-1.5 rounded-full text-xs font-semibold ${data.connection === 'connected' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`
 
-            // Recent logs with friendly timestamps
-            const logsDiv = document.getElementById('recent-logs')
-            logsDiv.innerHTML = data.recentLogs.map(l => {
-                const friendlyTime = formatTimeAgo(l.sent_at)
-                const typeLabel = l.message_type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-                const typeIcon = getMessageIcon(l.message_type)
-                return `
-                    <div class="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-lg px-4 py-3">
-                        <span class="text-lg">${typeIcon}</span>
-                        <div class="flex-1 min-w-0">
-                            <span class="font-medium text-sm text-gray-700 block truncate">${typeLabel}</span>
-                            <span class="text-xs text-gray-400">${friendlyTime}</span>
+                // Recent logs with friendly timestamps
+                const logsDiv = document.getElementById('recent-logs')
+                logsDiv.innerHTML = (data.recentLogs || []).map(l => {
+                    const friendlyTime = formatTimeAgo(l.sent_at)
+                    const typeLabel = l.message_type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                    const typeIcon = getMessageIcon(l.message_type)
+                    return `
+                        <div class="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-lg px-4 py-3">
+                            <span class="text-lg">${typeIcon}</span>
+                            <div class="flex-1 min-w-0">
+                                <span class="font-medium text-sm text-gray-700 block truncate">${typeLabel}</span>
+                                <span class="text-xs text-gray-400">${friendlyTime}</span>
+                            </div>
                         </div>
+                    `
+                }).join('') || `
+                    <div class="text-center py-8">
+                        <span class="text-3xl block mb-2">📭</span>
+                        <p class="text-sm text-gray-500">No messages sent yet</p>
+                        <p class="text-xs text-gray-400 mt-1">Go to <strong>Send</strong> to send your first message!</p>
                     </div>
                 `
-            }).join('') || `
-                <div class="text-center py-8">
-                    <span class="text-3xl block mb-2">📭</span>
-                    <p class="text-sm text-gray-500">No messages sent yet</p>
-                    <p class="text-xs text-gray-400 mt-1">Go to <strong>Send</strong> to send your first message!</p>
-                </div>
-            `
 
-            // Load upcoming schedule
-            loadNextUp()
+                // Load upcoming schedule
+                loadNextUp()
+            } catch (err) {
+                console.error('Dashboard load error:', err)
+                // Show friendly fallback instead of stuck "..."
+                document.getElementById('conn-status').innerHTML = '<span class="text-amber-600">Checking...</span>'
+                document.getElementById('group-alias').textContent = 'Checking...'
+                document.getElementById('group-alias').className = 'text-base font-bold text-gray-400'
+                // Still show greeting even if API fails
+                const hour = new Date().getHours()
+                const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+                const userName = document.getElementById('user-badge')?.textContent?.replace('👤 ', '').split(' (')[0] || ''
+                document.getElementById('greeting').textContent = `👋 ${timeGreeting}${userName ? ', ' + userName : ''}!`
+                const today = new Date()
+                document.getElementById('today-friendly').textContent = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+            }
         }
 
         // Load "Coming Up" card
@@ -1024,8 +1040,9 @@
         }
 
         // Init
-        loadCurrentUser()
-        showTab('dashboard')
+        loadCurrentUser().then(() => {
+            showTab('dashboard')
+        })
         setInterval(loadDashboard, 10000)
     </script>
 </body>
