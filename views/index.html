@@ -29,7 +29,12 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Card styling */
-        .card { background: white; border-radius: 12px; border: 1px solid #f3f4f6; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding: 16px; }
+        .card { background: white; border-radius: 12px; border: 1px solid #f3f4f6; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding: 16px; transition: box-shadow 0.2s ease; }
+        .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+        /* Pulse animation for live indicator */
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse { animation: pulse-dot 2s ease-in-out infinite; }
 
         /* Mobile bottom nav */
         @media (max-width: 768px) {
@@ -71,23 +76,71 @@
 
         <!-- Dashboard Tab -->
         <div id="tab-dashboard" class="tab-content">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                <div class="card">
-                    <p class="text-xs text-gray-500 font-medium uppercase">WhatsApp Status</p>
-                    <p id="conn-status" class="text-xl font-bold mt-1">...</p>
-                </div>
-                <div class="card">
-                    <p class="text-xs text-gray-500 font-medium uppercase">Today's Date</p>
-                    <p id="today-date" class="text-xl font-bold mt-1">...</p>
-                </div>
-                <div class="card">
-                    <p class="text-xs text-gray-500 font-medium uppercase">Sending Messages To</p>
-                    <p id="group-alias" class="text-lg font-bold mt-1">...</p>
-                    <p id="group-jid" class="text-xs font-mono text-gray-400 mt-1 break-all">...</p>
+            <!-- Welcome banner -->
+            <div class="card mb-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-100">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 id="greeting" class="text-lg font-bold text-gray-900">👋 Hello!</h2>
+                        <p id="today-friendly" class="text-sm text-gray-600 mt-0.5"></p>
+                    </div>
+                    <div id="status-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"></div>
                 </div>
             </div>
+
+            <!-- Status cards -->
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div class="card">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-lg">📡</span>
+                        <p class="text-xs text-gray-500 font-medium">WhatsApp</p>
+                    </div>
+                    <p id="conn-status" class="text-base font-bold">...</p>
+                </div>
+                <div class="card">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-lg">💬</span>
+                        <p class="text-xs text-gray-500 font-medium">Group</p>
+                    </div>
+                    <p id="group-alias" class="text-base font-bold">...</p>
+                    <p id="group-jid" class="hidden"></p>
+                </div>
+            </div>
+
+            <!-- Next up card -->
+            <div id="next-up-card" class="card mb-3 hidden">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-lg">📅</span>
+                    <h3 class="text-sm font-semibold text-gray-700">Coming Up</h3>
+                </div>
+                <div id="next-up-content"></div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mb-3">
+                <h3 class="text-sm font-semibold text-gray-700 mb-2">⚡ Quick Actions</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="showTab('send')" class="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-3 text-sm font-medium text-green-800 hover:bg-green-100 text-left">
+                        <span class="text-lg">📤</span>
+                        <span>Send Message</span>
+                    </button>
+                    <button onclick="showTab('schedule')" class="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-3 text-sm font-medium text-indigo-800 hover:bg-indigo-100 text-left">
+                        <span class="text-lg">📝</span>
+                        <span>Add Schedule</span>
+                    </button>
+                    <button onclick="showTab('team')" class="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-3 text-sm font-medium text-purple-800 hover:bg-purple-100 text-left">
+                        <span class="text-lg">👥</span>
+                        <span>View Team</span>
+                    </button>
+                    <button onclick="showTab('calendar')" class="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-3 text-sm font-medium text-amber-800 hover:bg-amber-100 text-left">
+                        <span class="text-lg">📅</span>
+                        <span>Calendar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent activity -->
             <div class="card">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3">📬 Recent Messages Sent</h3>
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">📬 Recent Activity</h3>
                 <div id="recent-logs" class="space-y-2"></div>
             </div>
         </div>
@@ -405,28 +458,137 @@
             const res = await fetch('/api/status')
             const data = await res.json()
             document.getElementById('app-version').textContent = data.version ? `v${data.version}` : ''
-            
-            const connEl = document.getElementById('conn-status')
-            connEl.textContent = data.connection === 'connected' ? '✅ Connected' : '❌ Disconnected'
-            connEl.className = `text-xl font-bold mt-1 ${data.connection === 'connected' ? 'text-green-600' : 'text-red-500'}`
-            
-            document.getElementById('today-date').textContent = data.today
-            document.getElementById('group-jid').textContent = data.groupJid || ''
-            const groupDisplay = data.groupAlias || (data.groupJid ? 'Group configured ✓' : 'Not configured')
-            document.getElementById('group-alias').textContent = groupDisplay
-            document.getElementById('group-alias').className = `text-lg font-bold mt-1 ${data.groupJid ? 'text-green-600' : 'text-amber-600'}`
 
+            // Friendly greeting based on time of day
+            const hour = new Date().getHours()
+            const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+            const userName = document.getElementById('user-badge')?.textContent?.replace('👤 ', '').split(' (')[0] || ''
+            document.getElementById('greeting').textContent = `👋 ${timeGreeting}${userName ? ', ' + userName : ''}!`
+
+            // Friendly date
+            const today = new Date()
+            const friendlyDate = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+            document.getElementById('today-friendly').textContent = friendlyDate
+
+            // Connection status
+            const connEl = document.getElementById('conn-status')
+            if (data.connection === 'connected') {
+                connEl.innerHTML = '<span class="text-green-600">Connected ✓</span>'
+            } else {
+                connEl.innerHTML = '<span class="text-red-500">Offline ✕</span>'
+            }
+
+            // Status pill in welcome banner
+            const pill = document.getElementById('status-pill')
+            pill.innerHTML = data.connection === 'connected'
+                ? '<span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span><span class="text-green-700">Live</span>'
+                : '<span class="w-2 h-2 bg-red-500 rounded-full"></span><span class="text-red-700">Offline</span>'
+            pill.className = `flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${data.connection === 'connected' ? 'bg-green-100' : 'bg-red-100'}`
+
+            // Group display
+            const groupDisplay = data.groupAlias || (data.groupJid ? 'Configured ✓' : 'Not set up')
+            document.getElementById('group-alias').textContent = groupDisplay
+            document.getElementById('group-alias').className = `text-base font-bold ${data.groupJid ? 'text-green-600' : 'text-amber-600'}`
+
+            // Desktop header badge
             const badge = document.getElementById('status-badge')
             badge.textContent = data.connection === 'connected' ? '🟢 Online' : '🔴 Offline'
             badge.className = `px-3 py-1.5 rounded-full text-xs font-semibold ${data.connection === 'connected' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`
 
+            // Recent logs with friendly timestamps
             const logsDiv = document.getElementById('recent-logs')
-            logsDiv.innerHTML = data.recentLogs.map(l => `
-                <div class="flex justify-between items-center bg-gray-50 border border-gray-100 rounded-lg px-4 py-3">
-                    <span class="font-medium text-sm text-gray-700">${l.message_type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-                    <span class="text-xs text-gray-400">${l.sent_at}</span>
+            logsDiv.innerHTML = data.recentLogs.map(l => {
+                const friendlyTime = formatTimeAgo(l.sent_at)
+                const typeLabel = l.message_type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                const typeIcon = getMessageIcon(l.message_type)
+                return `
+                    <div class="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-lg px-4 py-3">
+                        <span class="text-lg">${typeIcon}</span>
+                        <div class="flex-1 min-w-0">
+                            <span class="font-medium text-sm text-gray-700 block truncate">${typeLabel}</span>
+                            <span class="text-xs text-gray-400">${friendlyTime}</span>
+                        </div>
+                    </div>
+                `
+            }).join('') || `
+                <div class="text-center py-8">
+                    <span class="text-3xl block mb-2">📭</span>
+                    <p class="text-sm text-gray-500">No messages sent yet</p>
+                    <p class="text-xs text-gray-400 mt-1">Go to <strong>Send</strong> to send your first message!</p>
                 </div>
-            `).join('') || '<p class="text-sm text-gray-400">No messages sent yet. Go to the 📤 Send tab to send your first message!</p>'
+            `
+
+            // Load upcoming schedule
+            loadNextUp()
+        }
+
+        // Load "Coming Up" card
+        async function loadNextUp() {
+            try {
+                const now = new Date()
+                const year = now.getFullYear()
+                const month = now.getMonth() + 1
+                const res = await fetch(`/api/calendar/${year}/${month}`)
+                const data = await res.json()
+                const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Puerto_Rico' })
+
+                // Find next upcoming entry (today or future)
+                const upcoming = []
+                for (const [dateStr, entries] of Object.entries(data.entries)) {
+                    if (dateStr >= todayStr) {
+                        entries.forEach(e => upcoming.push({ ...e, date: dateStr }))
+                    }
+                }
+                upcoming.sort((a, b) => a.date.localeCompare(b.date))
+
+                const card = document.getElementById('next-up-card')
+                const content = document.getElementById('next-up-content')
+
+                if (upcoming.length > 0) {
+                    card.classList.remove('hidden')
+                    const next = upcoming.slice(0, 4)
+                    content.innerHTML = next.map(e => {
+                        const d = new Date(e.date + 'T12:00:00')
+                        const dayName = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                        const roleIcon = e.role === 'primary' ? '⭐' : '🔄'
+                        const roleBg = e.role === 'primary' ? 'bg-indigo-50 border-indigo-100' : 'bg-amber-50 border-amber-100'
+                        return `
+                            <div class="flex items-center justify-between py-2 ${e !== next[next.length-1] ? 'border-b border-gray-100' : ''}">
+                                <div class="flex items-center gap-2">
+                                    <span>${roleIcon}</span>
+                                    <span class="text-sm font-medium text-gray-700">${e.name}</span>
+                                </div>
+                                <span class="text-xs text-gray-500 ${roleBg} px-2 py-0.5 rounded border">${dayName}</span>
+                            </div>
+                        `
+                    }).join('')
+                } else {
+                    card.classList.add('hidden')
+                }
+            } catch {}
+        }
+
+        // Helper: format ISO timestamp to friendly relative time
+        function formatTimeAgo(isoStr) {
+            const date = new Date(isoStr)
+            const now = new Date()
+            const diffMs = now - date
+            const diffMin = Math.floor(diffMs / 60000)
+            const diffHr = Math.floor(diffMs / 3600000)
+            const diffDays = Math.floor(diffMs / 86400000)
+
+            if (diffMin < 1) return 'Just now'
+            if (diffMin < 60) return `${diffMin}m ago`
+            if (diffHr < 24) return `${diffHr}h ago`
+            if (diffDays === 1) return 'Yesterday'
+            if (diffDays < 7) return `${diffDays} days ago`
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        }
+
+        // Helper: get icon for message type
+        function getMessageIcon(type) {
+            const icons = { 'monday-summary': '📋', 'wednesday-reminder': '👋', 'thursday-poll': '📊', 'saturday-reminder': '👋', 'saturday-poll': '📊' }
+            return icons[type] || '💬'
         }
 
         // Team
@@ -445,7 +607,13 @@
                         <button onclick="deleteMember(${m.id})" class="text-xs font-medium text-red-600 hover:text-red-800 px-3 py-1.5 rounded-lg hover:bg-red-50">🗑️</button>
                     </div>
                 </div>
-            `).join('') || '<p class="text-sm text-gray-400">No team members yet. Add someone above!</p>'
+            `).join('') || `
+                <div class="text-center py-8">
+                    <span class="text-3xl block mb-2">👥</span>
+                    <p class="text-sm text-gray-500">No team members yet</p>
+                    <p class="text-xs text-gray-400 mt-1">Add your first member above to get started!</p>
+                </div>
+            `
         }
 
         function editMember(id, currentName, currentPhone) {
@@ -516,7 +684,13 @@
                         </div>
                     `).join('')}
                 </div>
-            `).join('') || '<p class="text-sm text-gray-400">No schedule entries yet</p>'
+            `).join('') || `
+                <div class="text-center py-8">
+                    <span class="text-3xl block mb-2">📅</span>
+                    <p class="text-sm text-gray-500">No upcoming schedule</p>
+                    <p class="text-xs text-gray-400 mt-1">Assign team members to service days above!</p>
+                </div>
+            `
         }
 
         async function addSchedule() {
@@ -699,15 +873,31 @@
             const res = await fetch('/api/logs')
             const logs = await res.json()
             const div = document.getElementById('logs-list')
-            div.innerHTML = logs.map(l => `
+            div.innerHTML = logs.map(l => {
+                const friendlyTime = formatTimeAgo(l.sent_at)
+                const typeIcon = getMessageIcon(l.message_type)
+                return `
                 <div class="bg-gray-50 border border-gray-100 rounded-lg p-3">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="font-medium text-sm text-indigo-600">${l.message_type}</span>
-                        <span class="text-gray-400 text-xs">${l.sent_at}</span>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-medium text-sm text-indigo-600">${typeIcon} ${l.message_type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                        <span class="text-gray-400 text-xs">${friendlyTime}</span>
                     </div>
                     <p class="text-xs text-gray-500 whitespace-pre-wrap">${(l.content || '').substring(0, 200)}${(l.content || '').length > 200 ? '...' : ''}</p>
+                </div>`
+            }).join('') || `
+                <div class="text-center py-8">
+                    <span class="text-3xl block mb-2">📋</span>
+                    <p class="text-sm text-gray-500">No messages sent yet</p>
+                    <p class="text-xs text-gray-400 mt-1">Messages will appear here after you send them.</p>
                 </div>
-            `).join('') || '<p class="text-sm text-gray-400">No logs yet</p>'
+            `
+            `).join('') || `
+                <div class="text-center py-8">
+                    <span class="text-3xl block mb-2">📋</span>
+                    <p class="text-sm text-gray-500">No messages sent yet</p>
+                    <p class="text-xs text-gray-400 mt-1">Messages will appear here after you send them.</p>
+                </div>
+            `
         }
 
         // Settings
