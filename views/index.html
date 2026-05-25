@@ -2,239 +2,176 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPR Team Scheduler Agent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4f46e5">
+    <title>IPR Team Scheduler</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { primary: '#6366f1' } } }
+            theme: { extend: { colors: { primary: '#4f46e5', 'primary-light': '#eef2ff' } } }
         }
     </script>
     <style>
-        /* Larger base font, better readability for older users */
-        body { font-size: 18px; line-height: 1.6; }
-        
-        /* Larger click targets */
-        button, select, input { min-height: 44px; font-size: 16px; }
-        
-        /* Better focus visibility */
-        button:focus, select:focus, input:focus {
-            outline: 3px solid #818cf8;
-            outline-offset: 2px;
-        }
-        
-        /* Tab buttons need to be bigger */
-        .tab-btn { min-height: 48px; font-size: 16px !important; }
-        
-        /* Smooth transitions for less jarring UI changes */
-        .tab-content { transition: opacity 0.2s ease; }
-        
-        /* Toast notification styles */
-        .toast {
-            position: fixed;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 16px 28px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: 600;
-            z-index: 9999;
-            animation: slideUp 0.3s ease;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            max-width: 90vw;
-            text-align: center;
-        }
-        .toast-success { background: #065f46; color: #6ee7b7; border: 2px solid #10b981; }
-        .toast-error { background: #7f1d1d; color: #fca5a5; border: 2px solid #ef4444; }
-        .toast-info { background: #1e3a5f; color: #93c5fd; border: 2px solid #3b82f6; }
-        @keyframes slideUp {
-            from { transform: translateX(-50%) translateY(20px); opacity: 0; }
-            to { transform: translateX(-50%) translateY(0); opacity: 1; }
-        }
-        
-        /* Loading spinner */
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 0.8s linear infinite;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+        button, select, input { min-height: 44px; font-size: 15px; }
+        button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+        .tab-content { transition: opacity 0.15s ease; }
+
+        /* Toast notifications */
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 12px; font-size: 15px; font-weight: 600; z-index: 9999; animation: slideUp 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 90vw; text-align: center; }
+        .toast-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .toast-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .toast-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+        @keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        /* Spinner */
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #e5e7eb; border-radius: 50%; border-top-color: #4f46e5; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Mobile bottom navigation */
+        /* Card styling */
+        .card { background: white; border-radius: 12px; border: 1px solid #f3f4f6; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding: 16px; }
+
+        /* Mobile bottom nav */
         @media (max-width: 768px) {
             .desktop-tabs { display: none !important; }
-            .header-status { display: none !important; }
-            .mobile-nav {
-                display: flex;
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: #1f2937;
-                border-top: 1px solid #374151;
-                padding: 6px 4px;
-                z-index: 1000;
-                justify-content: space-around;
-                gap: 2px;
-            }
-            .mobile-nav button {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 2px;
-                padding: 6px 4px;
-                border-radius: 8px;
-                font-size: 11px;
-                min-height: 56px;
-                flex: 1;
-                justify-content: center;
-                color: #9ca3af;
-                background: transparent;
-            }
-            .mobile-nav button.active {
-                color: #a5b4fc;
-                background: #312e81;
-            }
+            .desktop-header { display: none !important; }
+            .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; padding: 4px 4px env(safe-area-inset-bottom); z-index: 1000; justify-content: space-around; }
+            .mobile-nav button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 8px; font-size: 10px; min-height: 52px; flex: 1; justify-content: center; color: #6b7280; background: transparent; font-weight: 500; }
+            .mobile-nav button.active { color: #4f46e5; }
             .mobile-nav button .nav-icon { font-size: 22px; }
-            body { padding-bottom: 80px; }
-            .header-status { display: none; }
+            body { padding-bottom: 72px; }
         }
-        @media (min-width: 769px) {
-            .mobile-nav { display: none; }
-        }
+        @media (min-width: 769px) { .mobile-nav { display: none !important; } }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
-    <div class="max-w-6xl mx-auto px-4 py-6">
-        <!-- Header -->
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-            <h1 class="text-2xl sm:text-3xl font-bold text-white">⛪ IPR Team Scheduler <span id="app-version" class="text-sm font-normal text-gray-500"></span></h1>
-            <div class="flex items-center gap-3 header-status">
-                <span id="user-badge" class="text-base text-gray-300"></span>
-                <div id="status-badge" class="px-4 py-2 rounded-full text-base font-semibold"></div>
-                <button onclick="logout()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-base font-medium">Logout</button>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+    <div class="max-w-5xl mx-auto px-4 py-4">
+        <!-- Sticky Header (desktop) -->
+        <div class="desktop-header sticky top-0 bg-white z-10 border-b border-gray-100 -mx-4 px-4 py-3 mb-4 shadow-sm">
+            <div class="flex items-center justify-between">
+                <h1 class="text-lg font-bold text-gray-900">⛪ IPR Scheduler <span id="app-version" class="text-xs font-normal text-gray-400"></span></h1>
+                <div class="flex items-center gap-3">
+                    <span id="user-badge" class="text-sm text-gray-500"></span>
+                    <div id="status-badge" class="px-3 py-1.5 rounded-full text-xs font-semibold"></div>
+                    <button onclick="logout()" class="text-sm text-gray-500 hover:text-gray-700 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100">Logout</button>
+                </div>
             </div>
         </div>
 
         <!-- Desktop Tabs -->
-        <div class="desktop-tabs flex flex-wrap gap-2 mb-6 bg-gray-800 p-2 rounded-lg">
-            <button onclick="showTab('dashboard')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="dashboard">🏠 Home</button>
-            <button onclick="showTab('team')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="team">👥 Team</button>
-            <button onclick="showTab('schedule')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="schedule">📝 Schedule</button>
-            <button onclick="showTab('calendar')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="calendar">📅 Calendar</button>
-            <button onclick="showTab('send')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="send">📤 Send</button>
-            <button onclick="showTab('logs')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="logs">📋 History</button>
-            <button onclick="showTab('settings')" class="tab-btn px-5 py-3 rounded-md font-medium admin-only hidden" data-tab="settings">⚙️ Settings</button>
+        <div class="desktop-tabs flex gap-1 mb-4 bg-gray-100 p-1 rounded-lg">
+            <button onclick="showTab('dashboard')" class="tab-btn flex-1 px-3 py-2.5 rounded-lg text-sm font-medium" data-tab="dashboard">🏠 Home</button>
+            <button onclick="showTab('team')" class="tab-btn flex-1 px-3 py-2.5 rounded-lg text-sm font-medium" data-tab="team">👥 Team</button>
+            <button onclick="showTab('schedule')" class="tab-btn flex-1 px-3 py-2.5 rounded-lg text-sm font-medium" data-tab="schedule">📝 Schedule</button>
+            <button onclick="showTab('calendar')" class="tab-btn flex-1 px-3 py-2.5 rounded-lg text-sm font-medium" data-tab="calendar">📅 Calendar</button>
+            <button onclick="showTab('send')" class="tab-btn flex-1 px-3 py-2.5 rounded-lg text-sm font-medium" data-tab="send">📤 Send</button>
+            <button onclick="showTab('logs')" class="tab-btn flex-1 px-3 py-2.5 rounded-lg text-sm font-medium" data-tab="logs">📋 History</button>
+            <button onclick="showTab('settings')" class="tab-btn flex-1 px-3 py-2.5 rounded-lg text-sm font-medium admin-only hidden" data-tab="settings">⚙️ Settings</button>
         </div>
 
         <!-- Dashboard Tab -->
         <div id="tab-dashboard" class="tab-content">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-gray-800 rounded-lg p-5">
-                    <h3 class="text-base text-gray-400 uppercase font-semibold">WhatsApp Status</h3>
-                    <p id="conn-status" class="text-2xl font-bold mt-2">...</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div class="card">
+                    <p class="text-xs text-gray-500 font-medium uppercase">WhatsApp Status</p>
+                    <p id="conn-status" class="text-xl font-bold mt-1">...</p>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-5">
-                    <h3 class="text-base text-gray-400 uppercase font-semibold">Today's Date</h3>
-                    <p id="today-date" class="text-2xl font-bold mt-2">...</p>
+                <div class="card">
+                    <p class="text-xs text-gray-500 font-medium uppercase">Today's Date</p>
+                    <p id="today-date" class="text-xl font-bold mt-1">...</p>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-5">
-                    <h3 class="text-base text-gray-400 uppercase font-semibold">Sending Messages To</h3>
-                    <p id="group-alias" class="text-xl font-bold mt-2">...</p>
-                    <p id="group-jid" class="text-xs font-mono text-gray-500 mt-1 break-all">...</p>
+                <div class="card">
+                    <p class="text-xs text-gray-500 font-medium uppercase">Sending Messages To</p>
+                    <p id="group-alias" class="text-lg font-bold mt-1">...</p>
+                    <p id="group-jid" class="text-xs font-mono text-gray-400 mt-1 break-all">...</p>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-lg p-5">
-                <h3 class="text-xl font-semibold mb-4">📬 Recent Messages Sent</h3>
-                <div id="recent-logs" class="space-y-3"></div>
+            <div class="card">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">📬 Recent Messages Sent</h3>
+                <div id="recent-logs" class="space-y-2"></div>
             </div>
         </div>
 
         <!-- Team Tab -->
         <div id="tab-team" class="tab-content hidden">
-            <div class="bg-gray-800 rounded-lg p-5 mb-4">
-                <h3 class="text-xl font-semibold mb-2">➕ Add a New Team Member</h3>
-                <p class="text-base text-gray-400 mb-4">Enter the person's name and their phone number (with country code, like 17871234567).</p>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <input id="member-name" type="text" placeholder="Full name" class="flex-1 bg-gray-700 rounded px-4 py-3 text-base" aria-label="Team member name">
-                    <input id="member-phone" type="tel" placeholder="Phone (e.g. 17871234567)" class="flex-1 bg-gray-700 rounded px-4 py-3 text-base" aria-label="Phone number">
-                    <button onclick="addMember()" class="bg-primary hover:bg-indigo-500 px-6 py-3 rounded text-base font-semibold whitespace-nowrap">➕ Add Member</button>
+            <div class="card mb-3">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">➕ Add a New Team Member</h3>
+                <p class="text-xs text-gray-500 mb-3">Enter the person's name and phone number (with country code, like 17871234567).</p>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input id="member-name" type="text" placeholder="Full name" class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm" aria-label="Team member name">
+                    <input id="member-phone" type="tel" placeholder="Phone (e.g. 17871234567)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm" aria-label="Phone number">
+                    <button onclick="addMember()" class="bg-primary text-white px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap hover:bg-indigo-700">➕ Add</button>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-lg p-5">
-                <h3 class="text-xl font-semibold mb-4">👥 Current Team Members</h3>
-                <div id="team-list" class="space-y-3"></div>
+            <div class="card">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">👥 Current Team Members</h3>
+                <div id="team-list" class="space-y-2"></div>
             </div>
         </div>
 
         <!-- Schedule Tab -->
         <div id="tab-schedule" class="tab-content hidden">
-            <div class="bg-gray-800 rounded-lg p-5 mb-4">
-                <h3 class="text-xl font-semibold mb-2">➕ Assign Someone to a Service Day</h3>
-                <p class="text-base text-gray-400 mb-4">Pick a date, choose the person, and select their role.</p>
-                <div class="flex flex-col sm:flex-row gap-3 flex-wrap">
+            <div class="card mb-3">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">➕ Assign Someone to a Service Day</h3>
+                <p class="text-xs text-gray-500 mb-3">Pick a date, choose the person, and select their role.</p>
+                <div class="flex flex-col sm:flex-row gap-2 flex-wrap">
                     <div class="flex flex-col gap-1">
-                        <label for="sched-date" class="text-sm text-gray-400 font-medium">Date</label>
-                        <input id="sched-date" type="date" class="bg-gray-700 rounded px-4 py-3 text-base">
+                        <label for="sched-date" class="text-xs text-gray-500 font-medium">Date</label>
+                        <input id="sched-date" type="date" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label for="sched-day-type" class="text-sm text-gray-400 font-medium">Day Type</label>
-                        <select id="sched-day-type" class="bg-gray-700 rounded px-4 py-3 text-base">
+                        <label for="sched-day-type" class="text-xs text-gray-500 font-medium">Day Type</label>
+                        <select id="sched-day-type" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
                             <option value="thursday">Thursday</option>
                             <option value="sunday">Sunday</option>
                         </select>
                     </div>
                     <div class="flex flex-col gap-1 flex-1">
-                        <label for="sched-member" class="text-sm text-gray-400 font-medium">Person</label>
-                        <select id="sched-member" class="bg-gray-700 rounded px-4 py-3 text-base">
+                        <label for="sched-member" class="text-xs text-gray-500 font-medium">Person</label>
+                        <select id="sched-member" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
                             <option value="">Select a person...</option>
                         </select>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label for="sched-role" class="text-sm text-gray-400 font-medium">Role</label>
-                        <select id="sched-role" class="bg-gray-700 rounded px-4 py-3 text-base">
+                        <label for="sched-role" class="text-xs text-gray-500 font-medium">Role</label>
+                        <select id="sched-role" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
                             <option value="primary">⭐ Primary</option>
                             <option value="backup">🔄 Backup</option>
                         </select>
                     </div>
                     <div class="flex flex-col justify-end">
-                        <button onclick="addSchedule()" class="bg-primary hover:bg-indigo-500 px-6 py-3 rounded text-base font-semibold whitespace-nowrap">➕ Add</button>
+                        <button onclick="addSchedule()" class="bg-primary text-white px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap hover:bg-indigo-700">➕ Add</button>
                     </div>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-lg p-5">
-                <h3 class="text-xl font-semibold mb-4">📋 Upcoming Schedule</h3>
-                <div id="schedule-list" class="space-y-3"></div>
+            <div class="card">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">📋 Upcoming Schedule</h3>
+                <div id="schedule-list" class="space-y-2"></div>
             </div>
         </div>
 
         <!-- Calendar Tab -->
         <div id="tab-calendar" class="tab-content hidden">
-            <div class="bg-gray-800 rounded-lg p-5">
+            <div class="card">
                 <div class="flex items-center justify-between mb-4">
-                    <button onclick="changeMonth(-1)" class="bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded text-base font-semibold">← Previous</button>
-                    <h3 id="calendar-title" class="text-2xl font-bold text-white"></h3>
-                    <button onclick="changeMonth(1)" class="bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded text-base font-semibold">Next →</button>
+                    <button onclick="changeMonth(-1)" class="text-sm font-medium text-gray-600 hover:text-primary px-3 py-2 rounded-lg hover:bg-primary-light">← Prev</button>
+                    <h3 id="calendar-title" class="text-base font-bold text-gray-900"></h3>
+                    <button onclick="changeMonth(1)" class="text-sm font-medium text-gray-600 hover:text-primary px-3 py-2 rounded-lg hover:bg-primary-light">Next →</button>
                 </div>
-                <div class="flex gap-4 justify-center mb-4 text-sm">
-                    <span class="flex items-center gap-1"><span class="inline-block w-4 h-4 rounded bg-indigo-700"></span> Thursday</span>
-                    <span class="flex items-center gap-1"><span class="inline-block w-4 h-4 rounded bg-emerald-700"></span> Sunday</span>
-                    <span class="flex items-center gap-1">⭐ Primary</span>
-                    <span class="flex items-center gap-1"><span class="text-yellow-400">🔄</span> Backup</span>
+                <div class="flex gap-3 justify-center mb-3 text-xs text-gray-500">
+                    <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-indigo-100 border border-indigo-300"></span> Thursday</span>
+                    <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-emerald-100 border border-emerald-300"></span> Sunday</span>
+                    <span>⭐ Primary</span>
+                    <span>🔄 Backup</span>
                 </div>
                 <div class="grid grid-cols-7 gap-1">
-                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Sun</div>
-                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Mon</div>
-                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Tue</div>
-                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Wed</div>
-                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Thu</div>
-                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Fri</div>
-                    <div class="text-center text-sm text-gray-400 font-semibold py-2">Sat</div>
+                    <div class="text-center text-xs text-gray-400 font-semibold py-1">Sun</div>
+                    <div class="text-center text-xs text-gray-400 font-semibold py-1">Mon</div>
+                    <div class="text-center text-xs text-gray-400 font-semibold py-1">Tue</div>
+                    <div class="text-center text-xs text-gray-400 font-semibold py-1">Wed</div>
+                    <div class="text-center text-xs text-gray-400 font-semibold py-1">Thu</div>
+                    <div class="text-center text-xs text-gray-400 font-semibold py-1">Fri</div>
+                    <div class="text-center text-xs text-gray-400 font-semibold py-1">Sat</div>
                 </div>
                 <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
             </div>
@@ -242,128 +179,127 @@
 
         <!-- Manual Send Tab -->
         <div id="tab-send" class="tab-content hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div class="bg-gray-800 rounded-lg p-5">
-                    <h3 class="text-xl font-semibold mb-2">📤 Send a Message</h3>
-                    <p class="text-base text-gray-400 mb-4">Click a button below to preview and send that day's message to the group chat.</p>
-                    <div class="mb-4 p-4 bg-gray-700 rounded">
-                        <label for="sim-date" class="text-base text-gray-300 block mb-2 font-medium">📆 Pretend today is:</label>
-                        <input id="sim-date" type="date" class="bg-gray-600 rounded px-4 py-3 text-base w-full">
-                        <p class="text-sm text-gray-400 mt-2">Pick a date to test what message would be sent on that day.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                <div class="card">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-1">📤 Send a Message</h3>
+                    <p class="text-xs text-gray-500 mb-3">Click a button to preview and send that day's message to the group.</p>
+                    <div class="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        <label for="sim-date" class="text-xs text-gray-500 block mb-1 font-medium">📆 Pretend today is:</label>
+                        <input id="sim-date" type="date" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full">
                     </div>
-                    <div class="mb-4 p-4 bg-gray-700 rounded">
-                        <label for="send-group-override" class="text-base text-gray-300 block mb-2 font-medium">📱 Send to which group:</label>
-                        <select id="send-group-override" class="bg-gray-600 rounded px-4 py-3 text-base w-full">
+                    <div class="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        <label for="send-group-override" class="text-xs text-gray-500 block mb-1 font-medium">📱 Send to which group:</label>
+                        <select id="send-group-override" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full">
                             <option value="">Default group (the one in Settings)</option>
                         </select>
                     </div>
-                    <p class="text-base text-gray-300 mb-3 font-medium">Choose a message to send:</p>
-                    <div class="space-y-3">
-                        <button onclick="previewMessage('monday-summary')" class="w-full bg-blue-600 hover:bg-blue-500 px-5 py-4 rounded text-base font-semibold text-left">
+                    <p class="text-xs text-gray-500 mb-2 font-medium">Choose a message to send:</p>
+                    <div class="space-y-2">
+                        <button onclick="previewMessage('monday-summary')" class="w-full bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm font-medium text-left hover:bg-blue-100">
                             📋 Monday — Weekly Schedule Summary
                         </button>
-                        <button onclick="previewMessage('wednesday-reminder')" class="w-full bg-yellow-600 hover:bg-yellow-500 px-5 py-4 rounded text-base font-semibold text-left">
+                        <button onclick="previewMessage('wednesday-reminder')" class="w-full bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm font-medium text-left hover:bg-amber-100">
                             👋 Wednesday — "Hey, tomorrow is your day" Reminder
                         </button>
-                        <button onclick="previewMessage('thursday-poll')" class="w-full bg-purple-600 hover:bg-purple-500 px-5 py-4 rounded text-base font-semibold text-left">
+                        <button onclick="previewMessage('thursday-poll')" class="w-full bg-purple-50 border border-purple-200 text-purple-800 px-4 py-3 rounded-lg text-sm font-medium text-left hover:bg-purple-100">
                             📊 Thursday — Attendance Vote
                         </button>
-                        <button onclick="previewMessage('saturday-reminder')" class="w-full bg-orange-600 hover:bg-orange-500 px-5 py-4 rounded text-base font-semibold text-left">
+                        <button onclick="previewMessage('saturday-reminder')" class="w-full bg-orange-50 border border-orange-200 text-orange-800 px-4 py-3 rounded-lg text-sm font-medium text-left hover:bg-orange-100">
                             👋 Saturday — "Hey, tomorrow is Sunday" Reminder
                         </button>
-                        <button onclick="previewMessage('saturday-poll')" class="w-full bg-pink-600 hover:bg-pink-500 px-5 py-4 rounded text-base font-semibold text-left">
+                        <button onclick="previewMessage('saturday-poll')" class="w-full bg-pink-50 border border-pink-200 text-pink-800 px-4 py-3 rounded-lg text-sm font-medium text-left hover:bg-pink-100">
                             📊 Saturday — Sunday Attendance Vote
                         </button>
                     </div>
                 </div>
-                <div class="bg-gray-800 rounded-lg p-5">
-                    <h3 class="text-xl font-semibold mb-3">👁️ Preview</h3>
-                    <div id="preview-area" class="bg-gray-900 rounded p-4 min-h-[200px] whitespace-pre-wrap text-base font-mono border-2 border-gray-700">
-                        Click a message button on the left to see what it will look like...
+                <div class="card">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">👁️ Preview</h3>
+                    <div id="preview-area" class="bg-gray-50 rounded-lg p-4 min-h-[200px] whitespace-pre-wrap text-sm font-mono border border-gray-200 text-gray-700">
+                        Click a message button to see what it will look like...
                     </div>
-                    <div class="mt-4 flex gap-3">
-                        <button id="send-btn" onclick="sendMessage()" disabled class="flex-1 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-5 py-3 rounded text-base font-semibold">
+                    <div class="mt-3 flex gap-2">
+                        <button id="send-btn" onclick="sendMessage()" disabled class="flex-1 bg-green-600 text-white disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-700">
                             🚀 Send to Group
                         </button>
-                        <button id="force-send-btn" onclick="sendMessage(true)" disabled class="bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-5 py-3 rounded text-base font-semibold" title="Send even if it was already sent today">
-                            ⚡ Force Send
+                        <button id="force-send-btn" onclick="sendMessage(true)" disabled class="bg-red-50 text-red-700 border border-red-200 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-100" title="Send even if already sent today">
+                            ⚡ Force
                         </button>
                     </div>
-                    <p class="text-sm text-gray-400 mt-3">💡 <strong>Force Send</strong> = sends even if today's message was already sent.</p>
+                    <p class="text-xs text-gray-400 mt-2">💡 <strong>Force</strong> = sends even if today's message was already sent.</p>
                 </div>
             </div>
 
             <!-- Personal DMs Section -->
-            <div class="bg-gray-800 rounded-lg p-5 mt-4">
-                <h3 class="text-xl font-semibold mb-2">📩 Send Personal Messages</h3>
-                <p class="text-base text-gray-400 mb-4">Send a private WhatsApp message to each team member letting them know their role for the day.</p>
-                <div class="flex flex-col sm:flex-row gap-3 mb-4">
-                    <select id="dm-day-type" class="bg-gray-700 rounded px-4 py-3 text-base">
+            <div class="card">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">📩 Send Personal Messages</h3>
+                <p class="text-xs text-gray-500 mb-3">Send a private WhatsApp message to each team member with their role for the day.</p>
+                <div class="flex flex-col sm:flex-row gap-2 mb-3">
+                    <select id="dm-day-type" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
                         <option value="thursday">Thursday team</option>
                         <option value="sunday">Sunday team</option>
                     </select>
-                    <button onclick="previewPersonalDMs()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded text-base font-semibold">👁️ Preview Messages</button>
+                    <button onclick="previewPersonalDMs()" class="bg-primary text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700">👁️ Preview Messages</button>
                 </div>
-                <div id="personal-dm-list" class="space-y-3"></div>
+                <div id="personal-dm-list" class="space-y-2"></div>
             </div>
         </div>
 
         <!-- Logs Tab -->
         <div id="tab-logs" class="tab-content hidden">
-            <div class="bg-gray-800 rounded-lg p-5">
-                <h3 class="text-xl font-semibold mb-4">📋 Message History</h3>
-                <p class="text-base text-gray-400 mb-4">A log of all messages that have been sent by the bot.</p>
-                <div id="logs-list" class="space-y-3"></div>
+            <div class="card">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">📋 Message History</h3>
+                <p class="text-xs text-gray-500 mb-3">A log of all messages sent by the bot.</p>
+                <div id="logs-list" class="space-y-2"></div>
             </div>
         </div>
 
         <!-- Settings Tab (admin only) -->
         <div id="tab-settings" class="tab-content hidden">
-            <div class="bg-gray-800 rounded-lg p-5 mb-4">
-                <h3 class="text-xl font-semibold mb-2">📱 Target Group Chat</h3>
-                <p class="text-base text-gray-400 mb-4">This is the WhatsApp group where automated messages will be sent:</p>
-                <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center mb-4">
-                    <select id="group-select" class="flex-1 bg-gray-700 rounded px-4 py-3 text-base">
+            <div class="card mb-3">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">📱 Target Group Chat</h3>
+                <p class="text-xs text-gray-500 mb-3">Choose the WhatsApp group where automated messages will be sent:</p>
+                <div class="flex flex-col sm:flex-row gap-2 mb-3">
+                    <select id="group-select" class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
                         <option value="">Loading groups...</option>
                     </select>
-                    <button onclick="loadGroups()" class="bg-gray-600 hover:bg-gray-500 px-5 py-3 rounded text-base font-medium">🔄 Refresh List</button>
-                    <button onclick="saveGroup()" class="bg-primary hover:bg-indigo-500 px-6 py-3 rounded text-base font-semibold">💾 Save</button>
+                    <button onclick="loadGroups()" class="text-sm text-gray-600 border border-gray-300 px-4 py-2.5 rounded-lg font-medium hover:bg-gray-50">🔄 Refresh</button>
+                    <button onclick="saveGroup()" class="bg-primary text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700">💾 Save</button>
                 </div>
-                <div id="current-group" class="bg-gray-700 rounded p-4 text-base">
-                    <span class="text-gray-400">Currently sending to: </span><span id="current-group-jid" class="font-mono text-sm">...</span>
+                <div id="current-group" class="bg-gray-50 rounded-lg p-3 text-sm border border-gray-100">
+                    <span class="text-gray-500">Currently: </span><span id="current-group-jid" class="font-mono text-xs text-gray-600">...</span>
                 </div>
             </div>
 
-            <div class="bg-gray-800 rounded-lg p-5">
-                <h3 class="text-xl font-semibold mb-2">🏷️ Group Nicknames</h3>
-                <p class="text-base text-gray-400 mb-4">Give your groups friendly names so they're easier to identify:</p>
-                <div id="groups-alias-list" class="space-y-3"></div>
+            <div class="card mb-3">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">🏷️ Group Nicknames</h3>
+                <p class="text-xs text-gray-500 mb-3">Give your groups friendly names:</p>
+                <div id="groups-alias-list" class="space-y-2"></div>
             </div>
 
             <!-- User Management (admin only) -->
-            <div id="users-section" class="bg-gray-800 rounded-lg p-5 mt-4 hidden">
-                <h3 class="text-xl font-semibold mb-2">👤 Manage Users</h3>
-                <p class="text-base text-gray-400 mb-4">Add or remove people who can log into this tool:</p>
-                <div class="mb-4 p-4 bg-gray-700 rounded">
-                    <h4 class="text-base text-gray-300 mb-3 font-medium">Add a New User</h4>
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <input id="new-user" type="text" placeholder="Username" class="flex-1 bg-gray-600 rounded px-4 py-3 text-base" aria-label="New username">
-                        <input id="new-pass" type="password" placeholder="Password (6+ characters)" class="flex-1 bg-gray-600 rounded px-4 py-3 text-base" aria-label="New password">
-                        <label class="flex items-center gap-2 text-base text-gray-300 px-2"><input type="checkbox" id="new-admin" class="w-5 h-5"> Admin</label>
-                        <button onclick="addUser()" class="bg-primary hover:bg-indigo-500 px-6 py-3 rounded text-base font-semibold whitespace-nowrap">➕ Add User</button>
+            <div id="users-section" class="card mb-3 hidden">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">👤 Manage Users</h3>
+                <p class="text-xs text-gray-500 mb-3">Add or remove people who can log in:</p>
+                <div class="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <p class="text-xs text-gray-500 mb-2 font-medium">Add a New User</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input id="new-user" type="text" placeholder="Username" class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm" aria-label="New username">
+                        <input id="new-pass" type="password" placeholder="Password (6+)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm" aria-label="New password">
+                        <label class="flex items-center gap-2 text-sm text-gray-600 px-2"><input type="checkbox" id="new-admin" class="w-4 h-4 rounded"> Admin</label>
+                        <button onclick="addUser()" class="bg-primary text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 whitespace-nowrap">➕ Add</button>
                     </div>
                 </div>
-                <div id="users-list" class="space-y-3"></div>
+                <div id="users-list" class="space-y-2"></div>
             </div>
 
             <!-- Change Password -->
-            <div class="bg-gray-800 rounded-lg p-5 mt-4">
-                <h3 class="text-xl font-semibold mb-2">🔒 Change Your Password</h3>
-                <p class="text-base text-gray-400 mb-4">Update your login password:</p>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <input id="curr-pass" type="password" placeholder="Current password" class="flex-1 bg-gray-700 rounded px-4 py-3 text-base" aria-label="Current password">
-                    <input id="new-password" type="password" placeholder="New password (6+ characters)" class="flex-1 bg-gray-700 rounded px-4 py-3 text-base" aria-label="New password">
-                    <button onclick="changePassword()" class="bg-yellow-600 hover:bg-yellow-500 px-6 py-3 rounded text-base font-semibold whitespace-nowrap">🔒 Update Password</button>
+            <div class="card">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">🔒 Change Your Password</h3>
+                <p class="text-xs text-gray-500 mb-3">Update your login password:</p>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input id="curr-pass" type="password" placeholder="Current password" class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm" aria-label="Current password">
+                    <input id="new-password" type="password" placeholder="New password (6+)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm" aria-label="New password">
+                    <button onclick="changePassword()" class="bg-amber-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-amber-600 whitespace-nowrap">🔒 Update</button>
                 </div>
             </div>
         </div>
@@ -394,16 +330,16 @@
     </nav>
 
     <!-- Mobile "More" menu overlay -->
-    <div id="mobile-more-menu" class="fixed inset-0 bg-black/70 z-50 hidden flex items-end">
-        <div class="w-full bg-gray-800 rounded-t-2xl p-5 pb-8 space-y-3">
+    <div id="mobile-more-menu" class="fixed inset-0 bg-black/40 z-50 hidden flex items-end">
+        <div class="w-full bg-white rounded-t-2xl p-5 pb-8 space-y-2">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="text-lg font-semibold text-white">More Options</h3>
+                <h3 class="text-base font-semibold text-gray-900">More Options</h3>
                 <button onclick="closeMobileMore()" class="text-gray-400 text-2xl px-3">✕</button>
             </div>
-            <button onclick="showTab('team'); closeMobileMore()" class="w-full text-left bg-gray-700 rounded-lg px-5 py-4 text-base font-medium">👥 Team Members</button>
-            <button onclick="showTab('logs'); closeMobileMore()" class="w-full text-left bg-gray-700 rounded-lg px-5 py-4 text-base font-medium">📋 Message History</button>
-            <button onclick="showTab('settings'); closeMobileMore()" class="w-full text-left bg-gray-700 rounded-lg px-5 py-4 text-base font-medium admin-only hidden">⚙️ Settings</button>
-            <button onclick="logout()" class="w-full text-left bg-gray-700 rounded-lg px-5 py-4 text-base font-medium text-red-400">🚪 Logout</button>
+            <button onclick="showTab('team'); closeMobileMore()" class="w-full text-left bg-gray-50 border border-gray-100 rounded-lg px-4 py-3.5 text-sm font-medium text-gray-700 hover:bg-gray-100">👥 Team Members</button>
+            <button onclick="showTab('logs'); closeMobileMore()" class="w-full text-left bg-gray-50 border border-gray-100 rounded-lg px-4 py-3.5 text-sm font-medium text-gray-700 hover:bg-gray-100">📋 Message History</button>
+            <button onclick="showTab('settings'); closeMobileMore()" class="w-full text-left bg-gray-50 border border-gray-100 rounded-lg px-4 py-3.5 text-sm font-medium text-gray-700 hover:bg-gray-100 admin-only hidden">⚙️ Settings</button>
+            <button onclick="logout()" class="w-full text-left bg-gray-50 border border-gray-100 rounded-lg px-4 py-3.5 text-sm font-medium text-red-600 hover:bg-red-50">🚪 Logout</button>
         </div>
     </div>
 
@@ -430,13 +366,10 @@
 
         // Tab management
         function showTab(tab) {
-            // Handle "more" menu on mobile
             if (tab === 'more') {
                 document.getElementById('mobile-more-menu').classList.remove('hidden')
                 return
             }
-
-            // Don't allow non-admins to access settings
             if (tab === 'settings' && !isCurrentUserAdmin) return
 
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'))
@@ -444,13 +377,13 @@
             
             // Update desktop tabs
             document.querySelectorAll('.tab-btn').forEach(el => {
-                el.classList.remove('bg-primary', 'text-white')
-                el.classList.add('text-gray-400')
+                el.classList.remove('bg-white', 'text-gray-900', 'shadow-sm')
+                el.classList.add('text-gray-500')
             })
             const activeDesktop = document.querySelector(`.desktop-tabs [data-tab="${tab}"]`)
             if (activeDesktop) {
-                activeDesktop.classList.add('bg-primary', 'text-white')
-                activeDesktop.classList.remove('text-gray-400')
+                activeDesktop.classList.add('bg-white', 'text-gray-900', 'shadow-sm')
+                activeDesktop.classList.remove('text-gray-500')
             }
 
             // Update mobile nav
@@ -475,25 +408,25 @@
             
             const connEl = document.getElementById('conn-status')
             connEl.textContent = data.connection === 'connected' ? '✅ Connected' : '❌ Disconnected'
-            connEl.className = `text-2xl font-bold mt-2 ${data.connection === 'connected' ? 'text-green-400' : 'text-red-400'}`
+            connEl.className = `text-xl font-bold mt-1 ${data.connection === 'connected' ? 'text-green-600' : 'text-red-500'}`
             
             document.getElementById('today-date').textContent = data.today
             document.getElementById('group-jid').textContent = data.groupJid || ''
             const groupDisplay = data.groupAlias || (data.groupJid ? 'Group configured ✓' : 'Not configured')
             document.getElementById('group-alias').textContent = groupDisplay
-            document.getElementById('group-alias').className = `text-xl font-bold mt-2 ${data.groupJid ? 'text-green-400' : 'text-yellow-400'}`
+            document.getElementById('group-alias').className = `text-lg font-bold mt-1 ${data.groupJid ? 'text-green-600' : 'text-amber-600'}`
 
             const badge = document.getElementById('status-badge')
             badge.textContent = data.connection === 'connected' ? '🟢 Online' : '🔴 Offline'
-            badge.className = `px-4 py-2 rounded-full text-base font-semibold ${data.connection === 'connected' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`
+            badge.className = `px-3 py-1.5 rounded-full text-xs font-semibold ${data.connection === 'connected' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`
 
             const logsDiv = document.getElementById('recent-logs')
             logsDiv.innerHTML = data.recentLogs.map(l => `
-                <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3 text-base">
-                    <span class="font-semibold">${l.message_type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-                    <span class="text-gray-400">${l.sent_at}</span>
+                <div class="flex justify-between items-center bg-gray-50 border border-gray-100 rounded-lg px-4 py-3">
+                    <span class="font-medium text-sm text-gray-700">${l.message_type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                    <span class="text-xs text-gray-400">${l.sent_at}</span>
                 </div>
-            `).join('') || '<p class="text-gray-400 text-base">No messages sent yet. Go to the 📤 Send tab to send your first message!</p>'
+            `).join('') || '<p class="text-sm text-gray-400">No messages sent yet. Go to the 📤 Send tab to send your first message!</p>'
         }
 
         // Team
@@ -502,27 +435,27 @@
             const members = await res.json()
             const div = document.getElementById('team-list')
             div.innerHTML = members.map(m => `
-                <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3" id="member-row-${m.id}">
+                <div class="flex justify-between items-center bg-gray-50 border border-gray-100 rounded-lg px-4 py-3" id="member-row-${m.id}">
                     <div>
-                        <span class="font-semibold text-base">${m.name}</span>
-                        <span class="text-gray-400 text-base ml-2">📱 +${m.phone}</span>
+                        <span class="font-medium text-sm text-gray-900">${m.name}</span>
+                        <span class="text-gray-400 text-xs ml-2">📱 +${m.phone}</span>
                     </div>
-                    <div class="flex gap-3">
-                        <button onclick="editMember(${m.id}, '${m.name.replace(/'/g, "\\'")}', '${m.phone}')" class="bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">✏️ Edit</button>
-                        <button onclick="deleteMember(${m.id})" class="bg-red-800 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium">🗑️ Remove</button>
+                    <div class="flex gap-2">
+                        <button onclick="editMember(${m.id}, '${m.name.replace(/'/g, "\\'")}', '${m.phone}')" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50">✏️ Edit</button>
+                        <button onclick="deleteMember(${m.id})" class="text-xs font-medium text-red-600 hover:text-red-800 px-3 py-1.5 rounded-lg hover:bg-red-50">🗑️</button>
                     </div>
                 </div>
-            `).join('') || '<p class="text-gray-400 text-base">No team members yet. Add someone above!</p>'
+            `).join('') || '<p class="text-sm text-gray-400">No team members yet. Add someone above!</p>'
         }
 
         function editMember(id, currentName, currentPhone) {
             const row = document.getElementById(`member-row-${id}`)
             row.innerHTML = `
-                <div class="flex flex-col sm:flex-row gap-3 w-full items-stretch sm:items-center">
-                    <input id="edit-name-${id}" type="text" value="${currentName}" class="flex-1 bg-gray-600 rounded px-4 py-3 text-base">
-                    <input id="edit-phone-${id}" type="text" value="${currentPhone}" class="flex-1 bg-gray-600 rounded px-4 py-3 text-base">
-                    <button onclick="saveMember(${id})" class="bg-green-600 hover:bg-green-500 px-5 py-3 rounded text-base font-semibold">✅ Save</button>
-                    <button onclick="loadTeam()" class="bg-gray-600 hover:bg-gray-500 px-5 py-3 rounded text-base font-medium">❌ Cancel</button>
+                <div class="flex flex-col sm:flex-row gap-2 w-full items-stretch sm:items-center">
+                    <input id="edit-name-${id}" type="text" value="${currentName}" class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
+                    <input id="edit-phone-${id}" type="text" value="${currentPhone}" class="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
+                    <button onclick="saveMember(${id})" class="bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-700">✅ Save</button>
+                    <button onclick="loadTeam()" class="border border-gray-300 text-gray-600 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
                 </div>
             `
         }
@@ -574,16 +507,16 @@
 
             const div = document.getElementById('schedule-list')
             div.innerHTML = Object.entries(grouped).map(([key, items]) => `
-                <div class="bg-gray-700 rounded p-3">
-                    <h4 class="font-medium text-sm text-indigo-300 mb-2">📅 ${key}</h4>
+                <div class="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                    <h4 class="font-medium text-xs text-indigo-600 mb-2">📅 ${key}</h4>
                     ${items.map(i => `
-                        <div class="flex justify-between items-center ml-4 py-1">
-                            <span>${i.name} <span class="text-gray-400 text-xs">+${i.phone}</span> ${i.role === 'backup' ? '<span class="bg-yellow-800 text-yellow-200 text-xs px-2 py-0.5 rounded ml-2">🔄 Backup</span>' : ''}</span>
-                            <button onclick="deleteSchedule(${i.id})" class="text-red-400 hover:text-red-300 text-xs">✕</button>
+                        <div class="flex justify-between items-center ml-3 py-1.5">
+                            <span class="text-sm text-gray-700">${i.name} <span class="text-gray-400 text-xs">+${i.phone}</span> ${i.role === 'backup' ? '<span class="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded ml-1">Backup</span>' : ''}</span>
+                            <button onclick="deleteSchedule(${i.id})" class="text-red-400 hover:text-red-600 text-xs px-2">✕</button>
                         </div>
                     `).join('')}
                 </div>
-            `).join('') || '<p class="text-gray-500">No schedule entries yet</p>'
+            `).join('') || '<p class="text-sm text-gray-400">No schedule entries yet</p>'
         }
 
         async function addSchedule() {
@@ -631,7 +564,7 @@
 
             // Empty cells before first day
             for (let i = 0; i < firstDow; i++) {
-                html += '<div class="min-h-[90px] rounded bg-gray-900/30"></div>'
+                html += '<div class="min-h-[80px] rounded-lg bg-gray-50/50"></div>'
             }
 
             for (let day = 1; day <= data.lastDay; day++) {
@@ -639,37 +572,33 @@
                 const entries = data.entries[dateStr] || []
                 const isToday = dateStr === todayStr
                 const dow = new Date(calendarYear, calendarMonth - 1, day).getDay()
-                const isServiceDay = dow === 0 || dow === 4 // Sunday or Thursday
+                const isServiceDay = dow === 0 || dow === 4
 
-                let borderClass = isToday ? 'ring-2 ring-primary' : ''
-                let bgClass = 'bg-gray-900/50'
+                let borderClass = isToday ? 'ring-2 ring-indigo-500' : 'border border-gray-100'
+                let bgClass = 'bg-white'
                 if (entries.length > 0) {
                     const hasThursday = entries.some(e => e.day_type === 'thursday')
                     const hasSunday = entries.some(e => e.day_type === 'sunday')
-                    if (hasThursday && hasSunday) bgClass = 'bg-gradient-to-br from-indigo-900/40 to-emerald-900/40'
-                    else if (hasThursday) bgClass = 'bg-indigo-900/30'
-                    else if (hasSunday) bgClass = 'bg-emerald-900/30'
+                    if (hasThursday && hasSunday) bgClass = 'bg-gradient-to-br from-indigo-50 to-emerald-50'
+                    else if (hasThursday) bgClass = 'bg-indigo-50'
+                    else if (hasSunday) bgClass = 'bg-emerald-50'
                 }
 
-                html += `<div class="min-h-[90px] rounded p-1.5 ${bgClass} ${borderClass}">`
-                html += `<div class="text-xs font-bold ${isToday ? 'text-primary' : isServiceDay ? 'text-gray-200' : 'text-gray-500'} mb-1">${day}</div>`
+                html += `<div class="min-h-[80px] rounded-lg p-1.5 ${bgClass} ${borderClass}">`
+                html += `<div class="text-xs font-bold ${isToday ? 'text-indigo-600' : isServiceDay ? 'text-gray-900' : 'text-gray-400'} mb-0.5">${day}</div>`
 
                 if (entries.length > 0) {
-                    // Group by day_type
                     const byType = {}
                     entries.forEach(e => {
                         if (!byType[e.day_type]) byType[e.day_type] = []
                         byType[e.day_type].push(e)
                     })
                     for (const [dtype, people] of Object.entries(byType)) {
-                        const typeLabel = dtype === 'thursday' ? 'Thu' : 'Sun'
-                        const typeColor = dtype === 'thursday' ? 'text-indigo-300' : 'text-emerald-300'
-                        html += `<div class="text-[10px] font-semibold ${typeColor} uppercase tracking-wide">${typeLabel}</div>`
+                        const typeColor = dtype === 'thursday' ? 'text-indigo-600' : 'text-emerald-600'
                         people.forEach(p => {
                             const icon = p.role === 'primary' ? '⭐' : '🔄'
-                            const nameColor = p.role === 'primary' ? 'text-gray-100' : 'text-yellow-300/70'
-                            const roleSuffix = p.role === 'backup' ? ' <span class="text-yellow-500/60 italic">(B)</span>' : ''
-                            html += `<div class="text-[11px] ${nameColor} leading-tight truncate" title="${p.name} — ${p.role}">${icon} ${p.name}${roleSuffix}</div>`
+                            const nameColor = p.role === 'primary' ? 'text-gray-800' : 'text-gray-500'
+                            html += `<div class="text-[10px] ${nameColor} leading-tight truncate" title="${p.name} — ${p.role}">${icon} ${p.name}</div>`
                         })
                     }
                 }
@@ -707,15 +636,15 @@
             }
 
             div.innerHTML = notifications.map(n => `
-                <div class="bg-gray-700 rounded p-3">
+                <div class="bg-gray-50 border border-gray-100 rounded-lg p-3">
                     <div class="flex justify-between items-center mb-2">
-                        <span class="font-medium">${n.role === 'primary' ? '⭐' : '•'} ${n.name} <span class="text-gray-400 text-xs">+${n.phone}</span> ${n.role === 'backup' ? '<span class="bg-yellow-800 text-yellow-200 text-xs px-2 py-0.5 rounded ml-1">Backup</span>' : ''}</span>
-                        <button onclick="sendPersonalDM('${n.phone}', '${dayType}')" class="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-xs font-medium">📩 Send DM</button>
+                        <span class="font-medium text-sm text-gray-700">${n.role === 'primary' ? '⭐' : '•'} ${n.name} <span class="text-gray-400 text-xs">+${n.phone}</span> ${n.role === 'backup' ? '<span class="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded ml-1">Backup</span>' : ''}</span>
+                        <button onclick="sendPersonalDM('${n.phone}', '${dayType}')" class="bg-green-600 text-white hover:bg-green-700 px-3 py-1.5 rounded-lg text-xs font-medium">📩 Send</button>
                     </div>
-                    <p class="text-xs text-gray-300 whitespace-pre-wrap">${n.text}</p>
+                    <p class="text-xs text-gray-500 whitespace-pre-wrap">${n.text}</p>
                 </div>
             `).join('') + `
-                <button onclick="sendAllPersonalDMs('${dayType}')" class="w-full mt-2 bg-green-700 hover:bg-green-600 px-4 py-2 rounded text-sm font-medium">📩 Send All DMs</button>
+                <button onclick="sendAllPersonalDMs('${dayType}')" class="w-full mt-2 bg-green-600 text-white hover:bg-green-700 px-4 py-2.5 rounded-lg text-sm font-medium">📩 Send All DMs</button>
             `
         }
 
@@ -771,14 +700,14 @@
             const logs = await res.json()
             const div = document.getElementById('logs-list')
             div.innerHTML = logs.map(l => `
-                <div class="bg-gray-700 rounded p-3">
+                <div class="bg-gray-50 border border-gray-100 rounded-lg p-3">
                     <div class="flex justify-between items-center mb-1">
-                        <span class="font-medium text-sm text-indigo-300">${l.message_type}</span>
+                        <span class="font-medium text-sm text-indigo-600">${l.message_type}</span>
                         <span class="text-gray-400 text-xs">${l.sent_at}</span>
                     </div>
-                    <p class="text-xs text-gray-300 whitespace-pre-wrap">${(l.content || '').substring(0, 200)}${(l.content || '').length > 200 ? '...' : ''}</p>
+                    <p class="text-xs text-gray-500 whitespace-pre-wrap">${(l.content || '').substring(0, 200)}${(l.content || '').length > 200 ? '...' : ''}</p>
                 </div>
-            `).join('') || '<p class="text-gray-500">No logs yet</p>'
+            `).join('') || '<p class="text-sm text-gray-400">No logs yet</p>'
         }
 
         // Settings
@@ -809,11 +738,11 @@
                 // Render alias list
                 const aliasDiv = document.getElementById('groups-alias-list')
                 aliasDiv.innerHTML = groups.map(g => `
-                    <div class="flex gap-2 items-center bg-gray-700 rounded px-3 py-2">
-                        <span class="text-sm text-gray-400 w-48 truncate" title="${g.name}">${g.name}</span>
-                        <input type="text" value="${g.alias || ''}" placeholder="Enter alias..." 
-                               class="flex-1 bg-gray-600 rounded px-2 py-1 text-sm" id="alias-${g.jid.replace(/[@.]/g, '_')}">
-                        <button onclick="saveAlias('${g.jid}')" class="bg-primary hover:bg-indigo-500 px-3 py-1 rounded text-xs font-medium">Save</button>
+                    <div class="flex gap-2 items-center bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                        <span class="text-xs text-gray-500 w-40 truncate" title="${g.name}">${g.name}</span>
+                        <input type="text" value="${g.alias || ''}" placeholder="Nickname..." 
+                               class="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm" id="alias-${g.jid.replace(/[@.]/g, '_')}">
+                        <button onclick="saveAlias('${g.jid}')" class="bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700">Save</button>
                     </div>
                 `).join('')
             } catch (err) {
@@ -859,13 +788,13 @@
             const users = await res.json()
             const div = document.getElementById('users-list')
             div.innerHTML = users.map(u => `
-                <div class="flex justify-between items-center bg-gray-700 rounded px-3 py-2">
+                <div class="flex justify-between items-center bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
                     <div>
-                        <span class="font-medium">${u.username}</span>
-                        ${u.is_admin ? '<span class="bg-indigo-800 text-indigo-200 text-xs px-2 py-0.5 rounded ml-2">Admin</span>' : ''}
-                        <span class="text-gray-500 text-xs ml-2">${u.created_at}</span>
+                        <span class="font-medium text-sm text-gray-900">${u.username}</span>
+                        ${u.is_admin ? '<span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded ml-2">Admin</span>' : ''}
+                        <span class="text-gray-400 text-xs ml-2">${u.created_at}</span>
                     </div>
-                    <button onclick="deleteUser(${u.id}, '${u.username}')" class="text-red-400 hover:text-red-300 text-sm">✕ Remove</button>
+                    <button onclick="deleteUser(${u.id}, '${u.username}')" class="text-red-500 hover:text-red-700 text-xs font-medium px-2">✕ Remove</button>
                 </div>
             `).join('')
         }
