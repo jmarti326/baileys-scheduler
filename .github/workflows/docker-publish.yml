@@ -68,7 +68,7 @@ jobs:
   # Requires these repository secrets:
   #   AZURE_CREDENTIALS       — service principal JSON (az ad sp create-for-rbac)
   #   AZURE_RESOURCE_GROUP    — resource group where the Container App lives
-  #   AZURE_CONTAINER_APP     — Container App name (default: team-scheduler-worker)
+  #   AZURE_CONTAINER_APP     — Container App name (default: whatsapp-scheduler-worker)
   #   DATABASE_URL            — Neon Postgres connection string
   #   SESSION_SECRET          — Express session secret
   deploy-worker:

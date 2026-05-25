@@ -9,7 +9,7 @@ on:
 # ──────────────────────────────────────────────────────────────────────────────
 # RECOMMENDED SETUP (no workflow needed):
 #   1. Go to vercel.com → your project → Settings → Git
-#   2. Connect your GitHub repo (jmarti326/baileys-scheduler)
+#   2. Connect your GitHub repo (jmarti326/whatsapp-scheduler)
 #   3. Set "Production Branch" to master
 #   4. In Settings → Environment Variables, add:
 #        DATABASE_URL = your Neon connection string

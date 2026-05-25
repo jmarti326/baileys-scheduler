@@ -1,11 +1,11 @@
-// Team Scheduler Bot - Azure Infrastructure
+// WhatsApp Scheduler - Azure Infrastructure (Legacy VM)
 // Deploys a small Linux VM with Docker pre-installed
 
 @description('Azure region for all resources')
 param location string = 'eastus'
 
 @description('Name of the virtual machine')
-param vmName string = 'vm-team-scheduler'
+param vmName string = 'vm-whatsapp-scheduler'
 
 @description('Admin username for SSH access')
 param adminUsername string = 'azureuser'
@@ -31,7 +31,7 @@ param webAllowedCidr string = '*'
 
 @description('Tags for all resources')
 param tags object = {
-  project: 'team-scheduler-bot'
+  project: 'whatsapp-scheduler'
   environment: 'production'
 }
 

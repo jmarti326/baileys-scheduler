@@ -1,7 +1,7 @@
 services:
-  team-scheduler:
+  whatsapp-scheduler:
     build: .
-    container_name: team-scheduler-bot
+    container_name: whatsapp-scheduler
     restart: unless-stopped
     ports:
       - "3000:3000"

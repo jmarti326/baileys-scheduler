@@ -1,5 +1,5 @@
 {
-  "name": "team-scheduler-bot",
+  "name": "whatsapp-scheduler",
   "version": "1.0.0",
   "description": "WhatsApp bot for automating team scheduling reminders and attendance polls",
   "main": "index.js",

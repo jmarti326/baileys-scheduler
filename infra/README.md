@@ -1,6 +1,6 @@
 # Infrastructure
 
-Azure Bicep templates for deploying the Team Scheduler Bot to a Linux VM.
+Azure Bicep templates for deploying the WhatsApp Scheduler to a Linux VM.
 
 ## What gets deployed
 
@@ -27,13 +27,13 @@ Azure Bicep templates for deploying the Team Scheduler Bot to a Linux VM.
 
 2. **Create resource group:**
    ```bash
-   az group create --name rg-team-scheduler --location eastus
+   az group create --name rg-whatsapp-scheduler --location eastus
    ```
 
 3. **Deploy:**
    ```bash
    az deployment group create \
-     --resource-group rg-team-scheduler \
+     --resource-group rg-whatsapp-scheduler \
      --template-file infra/main.bicep \
      --parameters infra/main.bicepparam
    ```
@@ -41,7 +41,7 @@ Azure Bicep templates for deploying the Team Scheduler Bot to a Linux VM.
 4. **Get outputs:**
    ```bash
    az deployment group show \
-     --resource-group rg-team-scheduler \
+     --resource-group rg-whatsapp-scheduler \
      --name main \
      --query properties.outputs
    ```
@@ -50,7 +50,7 @@ Azure Bicep templates for deploying the Team Scheduler Bot to a Linux VM.
 
 The VM will automatically:
 - Install Docker CE + Docker Compose
-- Create `/opt/team-scheduler/` with compose files
+- Create `/opt/whatsapp-scheduler/` with compose files
 - Set up Caddy as a reverse proxy (port 80 → app port 3000)
 - Create a systemd service for auto-start on reboot
 
@@ -62,11 +62,11 @@ SSH into the VM and:
 ssh azureuser@<PUBLIC_IP>
 
 # Navigate to app directory
-cd /opt/team-scheduler
+cd /opt/whatsapp-scheduler
 
 # Copy your existing data (auth + DB) from local machine:
 # From your local machine:
-# scp -r ./data azureuser@<PUBLIC_IP>:/opt/team-scheduler/
+# scp -r ./data azureuser@<PUBLIC_IP>:/opt/whatsapp-scheduler/
 
 # Start the stack
 docker compose up -d
@@ -79,7 +79,7 @@ docker compose logs -f
 
 ```bash
 ssh azureuser@<PUBLIC_IP>
-cd /opt/team-scheduler
+cd /opt/whatsapp-scheduler
 docker compose pull
 docker compose up -d
 ```

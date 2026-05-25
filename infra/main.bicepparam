@@ -1,7 +1,7 @@
 using 'main.bicep'
 
 param location = 'eastus2'
-param vmName = 'vm-team-scheduler'
+param vmName = 'vm-whatsapp-scheduler'
 param adminUsername = 'azureuser'
 param vmSize = 'Standard_B1s'
 
@@ -13,7 +13,7 @@ param sshAllowedCidr = '*'
 param webAllowedCidr = '*'
 
 param tags = {
-  project: 'team-scheduler-bot'
+  project: 'whatsapp-scheduler'
   environment: 'production'
   managedBy: 'bicep'
 }

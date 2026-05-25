@@ -25,15 +25,15 @@ runcmd:
   - usermod -aG docker azureuser
 
   # Create app directory structure
-  - mkdir -p /opt/team-scheduler/data
+  - mkdir -p /opt/whatsapp-scheduler/data
 
   # Create docker-compose.yml for the app
   - |
-    cat > /opt/team-scheduler/docker-compose.yml << 'EOF'
+    cat > /opt/whatsapp-scheduler/docker-compose.yml << 'EOF'
     services:
-      team-scheduler:
-        image: ghcr.io/jmarti326/baileys-scheduler:latest
-        container_name: team-scheduler-bot
+      whatsapp-scheduler:
+        image: ghcr.io/jmarti326/whatsapp-scheduler:latest
+        container_name: whatsapp-scheduler
         restart: unless-stopped
         ports:
           - "3000:3000"
@@ -46,7 +46,7 @@ runcmd:
 
   # Create Caddyfile for reverse proxy with auto-TLS
   - |
-    cat > /opt/team-scheduler/Caddyfile << 'EOF'
+    cat > /opt/whatsapp-scheduler/Caddyfile << 'EOF'
     :80 {
         reverse_proxy localhost:3000
     }
@@ -54,7 +54,7 @@ runcmd:
 
   # Create Caddy docker-compose override for reverse proxy
   - |
-    cat > /opt/team-scheduler/docker-compose.override.yml << 'EOF'
+    cat > /opt/whatsapp-scheduler/docker-compose.override.yml << 'EOF'
     services:
       caddy:
         image: caddy:2-alpine
@@ -68,7 +68,7 @@ runcmd:
           - caddy_data:/data
           - caddy_config:/config
         depends_on:
-          - team-scheduler
+          - whatsapp-scheduler
 
     volumes:
       caddy_data:
@@ -77,16 +77,16 @@ runcmd:
 
   # Create systemd service for auto-start on reboot
   - |
-    cat > /etc/systemd/system/team-scheduler.service << 'EOF'
+    cat > /etc/systemd/system/whatsapp-scheduler.service << 'EOF'
     [Unit]
-    Description=Team Scheduler Bot
+    Description=WhatsApp Scheduler Bot
     After=docker.service
     Requires=docker.service
 
     [Service]
     Type=oneshot
     RemainAfterExit=yes
-    WorkingDirectory=/opt/team-scheduler
+    WorkingDirectory=/opt/whatsapp-scheduler
     ExecStart=/usr/bin/docker compose up -d
     ExecStop=/usr/bin/docker compose down
     TimeoutStartSec=120
@@ -96,7 +96,7 @@ runcmd:
     EOF
 
   - systemctl daemon-reload
-  - systemctl enable team-scheduler.service
+  - systemctl enable whatsapp-scheduler.service
 
   # Set ownership
-  - chown -R azureuser:azureuser /opt/team-scheduler
+  - chown -R azureuser:azureuser /opt/whatsapp-scheduler

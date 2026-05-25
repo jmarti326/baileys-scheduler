@@ -1,4 +1,4 @@
-// Team Scheduler Bot — Azure Container Apps worker
+// WhatsApp Scheduler — Azure Container Apps worker
 // Runs APP_ROLE=worker (Baileys + cron) against a Neon Postgres database.
 // The web UI and API are served from Vercel; only the WhatsApp worker lives here.
 
@@ -6,9 +6,9 @@
 param location string = 'eastus'
 
 @description('Name prefix for all resources')
-param appName string = 'team-scheduler'
+param appName string = 'whatsapp-scheduler'
 
-@description('Container image to deploy (e.g. ghcr.io/jmarti326/baileys-scheduler:latest)')
+@description('Container image to deploy (e.g. ghcr.io/jmarti326/whatsapp-scheduler:latest)')
 param containerImage string
 
 @description('Neon Postgres connection string')
@@ -28,7 +28,7 @@ param adminPass string = ''
 
 @description('Tags for all resources')
 param tags object = {
-  project: 'team-scheduler-bot'
+  project: 'whatsapp-scheduler'
   environment: 'production'
   role: 'worker'
 }

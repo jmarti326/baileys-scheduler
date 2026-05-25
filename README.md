@@ -28,8 +28,8 @@ A WhatsApp bot for automating team scheduling reminders and attendance polls usi
 ### Local Setup
 
 ```bash
-git clone https://github.com/jmarti326/baileys-scheduler.git
-cd baileys-scheduler
+git clone https://github.com/jmarti326/whatsapp-scheduler.git
+cd whatsapp-scheduler
 npm install
 mkdir -p data
 node src/index.js
@@ -72,9 +72,9 @@ Go to **Settings → Secrets and variables → Actions** in your repo and add:
 
 | Secret | Used by | How to get it |
 |--------|---------|---------------|
-| `AZURE_CREDENTIALS` | Worker deploy | `az ad sp create-for-rbac --name "team-scheduler-gha" --role contributor --scopes /subscriptions/<sub-id>/resourceGroups/<rg> --sdk-auth` |
-| `AZURE_RESOURCE_GROUP` | Worker deploy | Name of your Azure resource group (e.g. `rg-team-scheduler`) |
-| `AZURE_CONTAINER_APP` | Worker deploy | Container App name from Bicep output (e.g. `team-scheduler-worker`) |
+| `AZURE_CREDENTIALS` | Worker deploy | `az ad sp create-for-rbac --name "whatsapp-scheduler-gha" --role contributor --scopes /subscriptions/<sub-id>/resourceGroups/<rg> --sdk-auth` |
+| `AZURE_RESOURCE_GROUP` | Worker deploy | Name of your Azure resource group (e.g. `rg-whatsapp-scheduler`) |
+| `AZURE_CONTAINER_APP` | Worker deploy | Container App name from Bicep output (e.g. `whatsapp-scheduler-worker`) |
 | `DATABASE_URL` | Worker deploy + Migration | Neon pooler connection string |
 | `SESSION_SECRET` | Worker deploy | `openssl rand -hex 32` |
 | `VERCEL_TOKEN` | Vercel deploy | [vercel.com/account/tokens](https://vercel.com/account/tokens) |
@@ -105,11 +105,11 @@ In **Vercel → Project Settings → Environment Variables**, add:
 
 1. **Provision Azure infra** (one-time):
    ```bash
-   az group create --name rg-team-scheduler --location eastus
+   az group create --name rg-whatsapp-scheduler --location eastus
    az deployment group create \
-     --resource-group rg-team-scheduler \
+     --resource-group rg-whatsapp-scheduler \
      --template-file infra/container-app.bicep \
-     --parameters containerImage=ghcr.io/jmarti326/baileys-scheduler:latest \
+     --parameters containerImage=ghcr.io/jmarti326/whatsapp-scheduler:latest \
                   databaseUrl="postgresql://..." \
                   sessionSecret="..."
    ```
@@ -146,7 +146,7 @@ Paste the output as the `SQLITE_DB_B64` secret, then trigger the `Migrate SQLite
 ## Project Structure
 
 ```
-baileys-scheduler/
+whatsapp-scheduler/
 ├── src/
 │   ├── index.js          # Entry point — respects APP_ROLE env var
 │   ├── bot.js            # Baileys connection manager
