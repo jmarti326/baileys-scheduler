@@ -32,7 +32,7 @@
         /* Toast notification styles */
         .toast {
             position: fixed;
-            bottom: 24px;
+            bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
             padding: 16px 28px;
@@ -42,6 +42,8 @@
             z-index: 9999;
             animation: slideUp 0.3s ease;
             box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            max-width: 90vw;
+            text-align: center;
         }
         .toast-success { background: #065f46; color: #6ee7b7; border: 2px solid #10b981; }
         .toast-error { background: #7f1d1d; color: #fca5a5; border: 2px solid #ef4444; }
@@ -62,6 +64,48 @@
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Mobile bottom navigation */
+        @media (max-width: 640px) {
+            .desktop-tabs { display: none; }
+            .mobile-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: #1f2937;
+                border-top: 1px solid #374151;
+                padding: 6px 4px;
+                z-index: 1000;
+                justify-content: space-around;
+                gap: 2px;
+            }
+            .mobile-nav button {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
+                padding: 6px 4px;
+                border-radius: 8px;
+                font-size: 11px;
+                min-height: 56px;
+                flex: 1;
+                justify-content: center;
+                color: #9ca3af;
+                background: transparent;
+            }
+            .mobile-nav button.active {
+                color: #a5b4fc;
+                background: #312e81;
+            }
+            .mobile-nav button .nav-icon { font-size: 22px; }
+            body { padding-bottom: 80px; }
+            .header-status { display: none; }
+        }
+        @media (min-width: 641px) {
+            .mobile-nav { display: none; }
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
@@ -69,22 +113,22 @@
         <!-- Header -->
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
             <h1 class="text-2xl sm:text-3xl font-bold text-white">⛪ IPR Team Scheduler <span id="app-version" class="text-sm font-normal text-gray-500"></span></h1>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 header-status">
                 <span id="user-badge" class="text-base text-gray-300"></span>
                 <div id="status-badge" class="px-4 py-2 rounded-full text-base font-semibold"></div>
                 <button onclick="logout()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-base font-medium">Logout</button>
             </div>
         </div>
 
-        <!-- Tabs - larger, clearer, with icons -->
-        <div class="flex flex-wrap gap-2 mb-6 bg-gray-800 p-2 rounded-lg">
+        <!-- Desktop Tabs -->
+        <div class="desktop-tabs flex flex-wrap gap-2 mb-6 bg-gray-800 p-2 rounded-lg">
             <button onclick="showTab('dashboard')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="dashboard">🏠 Home</button>
             <button onclick="showTab('team')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="team">👥 Team</button>
             <button onclick="showTab('schedule')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="schedule">📝 Schedule</button>
             <button onclick="showTab('calendar')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="calendar">📅 Calendar</button>
             <button onclick="showTab('send')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="send">📤 Send</button>
             <button onclick="showTab('logs')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="logs">📋 History</button>
-            <button onclick="showTab('settings')" class="tab-btn px-5 py-3 rounded-md font-medium" data-tab="settings">⚙️ Settings</button>
+            <button onclick="showTab('settings')" class="tab-btn px-5 py-3 rounded-md font-medium admin-only hidden" data-tab="settings">⚙️ Settings</button>
         </div>
 
         <!-- Dashboard Tab -->
@@ -272,7 +316,7 @@
             </div>
         </div>
 
-        <!-- Settings Tab -->
+        <!-- Settings Tab (admin only) -->
         <div id="tab-settings" class="tab-content hidden">
             <div class="bg-gray-800 rounded-lg p-5 mb-4">
                 <h3 class="text-xl font-semibold mb-2">📱 Target Group Chat</h3>
@@ -324,8 +368,47 @@
         </div>
     </div>
 
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav" id="mobile-nav">
+        <button onclick="showTab('dashboard')" data-tab="dashboard">
+            <span class="nav-icon">🏠</span>
+            <span>Home</span>
+        </button>
+        <button onclick="showTab('calendar')" data-tab="calendar">
+            <span class="nav-icon">📅</span>
+            <span>Calendar</span>
+        </button>
+        <button onclick="showTab('send')" data-tab="send">
+            <span class="nav-icon">📤</span>
+            <span>Send</span>
+        </button>
+        <button onclick="showTab('schedule')" data-tab="schedule">
+            <span class="nav-icon">📝</span>
+            <span>Schedule</span>
+        </button>
+        <button onclick="showTab('more')" data-tab="more" id="mobile-more-btn">
+            <span class="nav-icon">☰</span>
+            <span>More</span>
+        </button>
+    </nav>
+
+    <!-- Mobile "More" menu overlay -->
+    <div id="mobile-more-menu" class="fixed inset-0 bg-black/70 z-50 hidden flex items-end">
+        <div class="w-full bg-gray-800 rounded-t-2xl p-5 pb-8 space-y-3">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-semibold text-white">More Options</h3>
+                <button onclick="closeMobileMore()" class="text-gray-400 text-2xl px-3">✕</button>
+            </div>
+            <button onclick="showTab('team'); closeMobileMore()" class="w-full text-left bg-gray-700 rounded-lg px-5 py-4 text-base font-medium">👥 Team Members</button>
+            <button onclick="showTab('logs'); closeMobileMore()" class="w-full text-left bg-gray-700 rounded-lg px-5 py-4 text-base font-medium">📋 Message History</button>
+            <button onclick="showTab('settings'); closeMobileMore()" class="w-full text-left bg-gray-700 rounded-lg px-5 py-4 text-base font-medium admin-only hidden">⚙️ Settings</button>
+            <button onclick="logout()" class="w-full text-left bg-gray-700 rounded-lg px-5 py-4 text-base font-medium text-red-400">🚪 Logout</button>
+        </div>
+    </div>
+
     <script>
         let currentPreviewType = null
+        let isCurrentUserAdmin = false
 
         // Toast notification system (replaces jarring alert() popups)
         function showToast(message, type = 'info', duration = 4000) {
@@ -339,16 +422,40 @@
             setTimeout(() => toast.remove(), duration)
         }
 
+        // Mobile more menu
+        function closeMobileMore() {
+            document.getElementById('mobile-more-menu').classList.add('hidden')
+        }
+
         // Tab management
         function showTab(tab) {
+            // Handle "more" menu on mobile
+            if (tab === 'more') {
+                document.getElementById('mobile-more-menu').classList.remove('hidden')
+                return
+            }
+
+            // Don't allow non-admins to access settings
+            if (tab === 'settings' && !isCurrentUserAdmin) return
+
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'))
             document.getElementById(`tab-${tab}`).classList.remove('hidden')
+            
+            // Update desktop tabs
             document.querySelectorAll('.tab-btn').forEach(el => {
                 el.classList.remove('bg-primary', 'text-white')
                 el.classList.add('text-gray-400')
             })
-            document.querySelector(`[data-tab="${tab}"]`).classList.add('bg-primary', 'text-white')
-            document.querySelector(`[data-tab="${tab}"]`).classList.remove('text-gray-400')
+            const activeDesktop = document.querySelector(`.desktop-tabs [data-tab="${tab}"]`)
+            if (activeDesktop) {
+                activeDesktop.classList.add('bg-primary', 'text-white')
+                activeDesktop.classList.remove('text-gray-400')
+            }
+
+            // Update mobile nav
+            document.querySelectorAll('.mobile-nav button').forEach(el => el.classList.remove('active'))
+            const activeMobile = document.querySelector(`.mobile-nav [data-tab="${tab}"]`)
+            if (activeMobile) activeMobile.classList.add('active')
 
             if (tab === 'dashboard') loadDashboard()
             if (tab === 'team') loadTeam()
@@ -736,7 +843,10 @@
             if (res.status === 401) { window.location.href = '/login'; return }
             const user = await res.json()
             document.getElementById('user-badge').textContent = `👤 ${user.username}${user.isAdmin ? ' (admin)' : ''}`
+            isCurrentUserAdmin = user.isAdmin
             if (user.isAdmin) {
+                // Show all admin-only elements
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'))
                 document.getElementById('users-section').classList.remove('hidden')
                 loadUsers()
             }
