@@ -211,9 +211,9 @@
                     <h3 id="calendar-title" class="text-base font-bold text-gray-900"></h3>
                     <button onclick="changeMonth(1)" class="text-sm font-medium text-gray-600 hover:text-primary px-3 py-2 rounded-lg hover:bg-primary-light">Next →</button>
                 </div>
-                <div class="flex gap-3 justify-center mb-3 text-xs text-gray-500">
-                    <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-indigo-100 border border-indigo-300"></span> Thursday</span>
-                    <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-emerald-100 border border-emerald-300"></span> Sunday</span>
+                <div class="flex gap-3 justify-center mb-3 text-xs text-gray-600 font-medium">
+                    <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-indigo-200 border border-indigo-400"></span> Thursday</span>
+                    <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-emerald-200 border border-emerald-400"></span> Sunday</span>
                     <span>⭐ Primary</span>
                     <span>🔄 Backup</span>
                 </div>
@@ -764,18 +764,20 @@
                 const dow = new Date(calendarYear, calendarMonth - 1, day).getDay()
                 const isServiceDay = dow === 0 || dow === 4
 
-                let borderClass = isToday ? 'ring-2 ring-indigo-500' : 'border border-gray-100'
+                let borderClass = isToday ? 'ring-2 ring-indigo-500 shadow-md' : 'border border-gray-200'
                 let bgClass = 'bg-white'
                 if (entries.length > 0) {
                     const hasThursday = entries.some(e => e.day_type === 'thursday')
                     const hasSunday = entries.some(e => e.day_type === 'sunday')
-                    if (hasThursday && hasSunday) bgClass = 'bg-gradient-to-br from-indigo-50 to-emerald-50'
-                    else if (hasThursday) bgClass = 'bg-indigo-50'
-                    else if (hasSunday) bgClass = 'bg-emerald-50'
+                    if (hasThursday && hasSunday) bgClass = 'bg-gradient-to-br from-indigo-100 to-emerald-100'
+                    else if (hasThursday) bgClass = 'bg-indigo-100'
+                    else if (hasSunday) bgClass = 'bg-emerald-100'
+                } else if (isServiceDay) {
+                    bgClass = 'bg-gray-50'
                 }
 
                 html += `<div class="min-h-[80px] rounded-lg p-1.5 ${bgClass} ${borderClass}">`
-                html += `<div class="text-xs font-bold ${isToday ? 'text-indigo-600' : isServiceDay ? 'text-gray-900' : 'text-gray-400'} mb-0.5">${day}</div>`
+                html += `<div class="text-xs font-bold ${isToday ? 'text-white bg-indigo-600 w-5 h-5 rounded-full flex items-center justify-center' : isServiceDay ? 'text-gray-900' : 'text-gray-400'} mb-0.5">${day}</div>`
 
                 if (entries.length > 0) {
                     const byType = {}
