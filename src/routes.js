@@ -61,11 +61,24 @@ router.get('/api/status', async (req, res) => {
             connection = row?.value || 'disconnected'
         }
 
+        // Try alias first, then look up group name from cache
+        let groupName = alias?.alias || null
+        if (!groupName && groupJid) {
+            const cache = await db.get("SELECT value FROM app_settings WHERE key = 'groups_cache'")
+            if (cache?.value) {
+                try {
+                    const groups = JSON.parse(cache.value)
+                    const match = groups.find(g => g.jid === groupJid)
+                    if (match) groupName = match.name
+                } catch {}
+            }
+        }
+
         res.json({
             version: appVersion,
             connection,
             groupJid,
-            groupAlias: alias?.alias || null,
+            groupAlias: groupName,
             today: getToday(),
             recentLogs,
         })

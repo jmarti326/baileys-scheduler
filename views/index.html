@@ -370,9 +370,10 @@
             connEl.className = `text-2xl font-bold mt-2 ${data.connection === 'connected' ? 'text-green-400' : 'text-red-400'}`
             
             document.getElementById('today-date').textContent = data.today
-            document.getElementById('group-jid').textContent = data.groupJid
-            document.getElementById('group-alias').textContent = data.groupAlias || 'Not configured'
-            document.getElementById('group-alias').className = `text-xl font-bold mt-2 ${data.groupAlias ? 'text-green-400' : 'text-yellow-400'}`
+            document.getElementById('group-jid').textContent = data.groupJid || ''
+            const groupDisplay = data.groupAlias || (data.groupJid ? 'Group configured ✓' : 'Not configured')
+            document.getElementById('group-alias').textContent = groupDisplay
+            document.getElementById('group-alias').className = `text-xl font-bold mt-2 ${data.groupJid ? 'text-green-400' : 'text-yellow-400'}`
 
             const badge = document.getElementById('status-badge')
             badge.textContent = data.connection === 'connected' ? '🟢 Online' : '🔴 Offline'
