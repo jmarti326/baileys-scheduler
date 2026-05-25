@@ -3,6 +3,13 @@ name: Build, Push, and Deploy
 on:
   push:
     branches: [master]
+    paths:
+      - 'src/**'
+      - 'views/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Dockerfile'
+      - '.github/workflows/docker-publish.yml'
   workflow_dispatch:
 
 env:
