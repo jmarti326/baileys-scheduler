@@ -29,7 +29,9 @@ function getToday() {
 }
 function getGroupJid() {
     const sched = getSchedulerModule()
-    return sched ? sched.getGroupJid() : Promise.resolve(null)
+    if (sched) return sched.getGroupJid()
+    // Fallback: read directly from DB (for Vercel/API-only mode)
+    return getDb().then(db => db.get("SELECT value FROM app_settings WHERE key = 'group_jid'")).then(r => r?.value || null)
 }
 
 const router = express.Router()
