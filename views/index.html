@@ -555,6 +555,8 @@
             const data = await res.json()
             if (data.sent) {
                 alert('✅ Message sent!')
+            } else if (data.queued) {
+                alert('✅ Message queued — worker will send it within 10 seconds')
             } else if (data.skipped) {
                 alert('⏭️ Already sent today. Use Force Send to override.')
             } else {
